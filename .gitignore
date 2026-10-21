@@ -1,0 +1,10 @@
+# generati
+.work/
+node_modules/
+# macOS / Xcode
+.DS_Store
+xcuserdata/
+*.xcuserstate
+DerivedData/
+# backup del catalogo (dati personali): non vanno nel repository
+backup-carte-*.json

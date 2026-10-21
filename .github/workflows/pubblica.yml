@@ -1,0 +1,35 @@
+# Pubblica app/ sul progetto Cloudflare Pages esistente (stesso indirizzo, quindi stessi dati sul telefono),
+# solo dopo che tutti i test sono passati. Parte a ogni push su main o a mano (Actions → Pubblica → Run workflow).
+# Segreti richiesti (Settings → Secrets and variables → Actions): CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID.
+name: Pubblica
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+concurrency:
+  group: pubblica
+  cancel-in-progress: false
+jobs:
+  test:
+    uses: ./.github/workflows/verifica.yml
+  pubblica:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Controllo dei segreti
+        env:
+          T: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          A: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          [ -n "$T" ] && [ -n "$A" ] || { echo "::error::Mancano i segreti CLOUDFLARE_API_TOKEN e/o CLOUDFLARE_ACCOUNT_ID"; exit 1; }
+      - name: Pubblica su Cloudflare Pages
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy app --project-name=carte-pokemon-5vf --branch=main --commit-dirty=true
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

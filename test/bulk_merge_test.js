@@ -1,0 +1,14 @@
+const {JSDOM,VirtualConsole}=require('jsdom'); const fs=require('fs');
+const html=fs.readFileSync(require('./percorsi').APP,'utf8');
+const wait=ms=>new Promise(r=>setTimeout(r,ms)); const now=Date.now();
+const mk=(n,name,o={})=>({key:`c${n}|${o.lang||'IT'}|${o.variant||'Normale'}|${o.cond||'NM'}`,cardId:'c'+n,name,setName:'Set',number:String(n),total:'10',img:'x',lang:'IT',variant:'Normale',cond:'NM',qty:1,price:10,priceManual:null,added:now-n,...o});
+const seed=[mk(9,'Nove',{qty:2}),mk(9,'Nove',{lang:'EN',qty:3,priceManual:6}),mk(8,'Otto')];
+const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'https://x.netlify.app/',beforeParse(w){ w.localStorage.setItem('pkm_catalog',JSON.stringify(seed)); w.confirm=()=>true; w.scrollTo=()=>{}; w.HTMLCanvasElement.prototype.getContext=()=>new Proxy({},{get:()=>()=>({}),set:()=>true}); w.fetch=async()=>({ok:false,status:500,json:async()=>({})}); }});
+const w=dom.window,d=w.document;
+(async()=>{ await wait(250); d.querySelector('nav button[data-go="cat"]').click(); d.getElementById('btn-select').click();
+ [...d.querySelectorAll('#list .item')].filter(r=>r.textContent.includes('Nove')).forEach(r=>r.click()); d.getElementById('sel-edit').click();
+ const l=d.getElementById('be-lang'); l.value='IT'; l.dispatchEvent(new w.Event('change',{bubbles:true})); d.getElementById('be-apply').click();
+ const c=JSON.parse(w.localStorage.getItem('pkm_catalog')); const nove=c.filter(e=>e.name==='Nove');
+ console.log('voci "Nove":',nove.length,'| quantità:',nove.map(e=>e.qty).join(','),'| prezzo mio ereditato:',nove.map(e=>e.priceManual).join(','),'|',d.getElementById('undo-t').textContent);
+ d.getElementById('undo-b').click(); console.log('dopo Annulla:',JSON.parse(w.localStorage.getItem('pkm_catalog')).filter(e=>e.name==='Nove').map(e=>e.lang+'x'+e.qty).join(' + '));
+ process.exit(0); })();
