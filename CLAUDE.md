@@ -9,7 +9,7 @@ Si lavora con Claude Code **sul Mac dell'utente, in questa cartella** (git local
 ## Avvio della sessione
 1. `bash strumenti/setup.sh` (dipendenze di test e screenshot; si può rilanciare).
 2. `bash strumenti/test.sh`: deve finire con "TUTTI I TEST SUPERATI". Se qualcosa non funziona, dillo all'utente prima di procedere.
-3. `git status`: se ci sono modifiche non committate di una sessione precedente, chiedi all'utente cosa farne prima di iniziare.
+3. `git status`: se ci sono modifiche non committate di una sessione precedente, chiedi all'utente cosa farne prima di iniziare. La cartella sta in Documenti, sincronizzata con iCloud Drive: file "nome 2.ext" sono copie in conflitto di iCloud (ignorate da git); se ne trovi, confrontale con l'originale e segnalale all'utente.
 
 ## Metodo di lavoro (obbligatorio)
 - **Modifiche solo mirate**, mai riscrivere un file grande da zero (soprattutto `app/index.html`). Usa lo strumento Edit con un testo da cercare unico, oppure uno script copiato da `strumenti/patch_modello.py` (`rep()` fallisce se il testo non è unico). Per trovare il codice: grep su `.work/app.js` (JavaScript estratto) o direttamente su `app/index.html`.

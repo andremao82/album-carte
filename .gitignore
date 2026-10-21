@@ -1,6 +1,11 @@
 # generati
 .work/
 album-carte-pwa.zip
+# altri pacchetti lasciati nella cartella (es. il vecchio CartePokemon-ios.zip)
+*.zip
+# copie in conflitto create da iCloud Drive ("file 2.js")
+* 2
+* 2.*
 node_modules/
 # macOS
 .DS_Store
