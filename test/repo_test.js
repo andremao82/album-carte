@@ -10,15 +10,18 @@ const VECCHI=/\/mnt\/user-data|\/home\/claude|\/tmp\/shot/;
 const walk=d=>fs.readdirSync(path.join(R,d),{withFileTypes:true}).flatMap(e=>e.isDirectory()?(['node_modules','storico'].includes(e.name)?[]:walk(path.join(d,e.name))):[path.join(d,e.name)]);
 for(const f of [...walk('test'),...walk('screenshot'),...walk('strumenti'),'CLAUDE.md','README.md'].filter(f=>/\.(js|sh|py|yml|md)$/.test(f)&&!f.endsWith('repo_test.js')))
   ok(!VECCHI.test(rd(f)),'percorso assoluto della vecchia sandbox in '+f);
-ok(fs.readdirSync(path.join(R,'test')).filter(f=>f.endsWith('_test.js')).length>=50,'tutti i test presenti');
-for(const k of ['APP','SITE','SWIFT','IOS','SHOT','PACCHETTO']) ok(fs.existsSync(L[k]),'percorsi.'+k+' esiste');
+ok(fs.readdirSync(path.join(R,'test')).filter(f=>f.endsWith('_test.js')).length>=34,'tutti i test del web presenti');
+// solo PWA: l'app nativa è stata abbandonata il 21/10/2026
+ok(!ex('ios')&&!ex('strumenti/ios.sh')&&!fs.readdirSync(path.join(R,'test')).some(f=>f.startsWith('ios_')),'nessun resto dell\'app nativa');
+ok(rd('CLAUDE.md').includes('solo PWA')&&!/xcodebuild|\*\*Swift\*\*|ios\//.test(rd('CLAUDE.md')),'CLAUDE.md: solo PWA');
+for(const k of ['APP','SITE','SHOT','PACCHETTO']) ok(fs.existsSync(L[k]),'percorsi.'+k+' esiste');
 ok(L.APP_URL==='file://'+L.APP && L.APPJS.startsWith(L.WORK),'percorsi coerenti');
 // niente repository git annidati (romperebbero il repo principale)
 const gits=d=>fs.readdirSync(d,{withFileTypes:true}).flatMap(e=>!e.isDirectory()||e.name==='node_modules'?[]:e.name==='.git'?[path.join(d,e.name)]:gits(path.join(d,e.name)));
-ok(gits(path.join(R,'ios')).length===0&&gits(path.join(R,'app')).length===0,'nessun .git dentro ios/ o app/');
+ok(gits(path.join(R,'app')).length===0&&gits(path.join(R,'test')).length===0,'nessun .git annidato');
 // strumenti del kit tolti, quelli nuovi presenti
 for(const f of ['kit.sh','kit_pagina.py','estrai_kit.py']) ok(!ex('strumenti/'+f),'strumento del kit rimasto: '+f);
-for(const f of ['setup.sh','test.sh','estrai_js.py','pacchetto.sh','ios.sh','patch_modello.py']) ok(ex('strumenti/'+f),'manca strumenti/'+f);
+for(const f of ['setup.sh','test.sh','estrai_js.py','pacchetto.sh','patch_modello.py']) ok(ex('strumenti/'+f),'manca strumenti/'+f);
 ok(fs.readdirSync(path.join(R,'strumenti','storico')).some(f=>f.startsWith('patch_web_')),'storico delle patch conservato');
 // CLAUDE.md: regole del Progetto claude.ai portate in Claude Code
 const cm=rd('CLAUDE.md');
@@ -29,7 +32,7 @@ const sito=(rd('strumenti/pacchetto.sh').match(/^SITO="https:\/\/([a-z0-9-]+)\.p
 ok(sito==='carte-pokemon-5vf','SITO resta il progetto esistente: '+sito);
 ok(!ex('.github')&&!ex('wrangler.toml'),'niente GitHub Actions né wrangler');
 ok(rd('strumenti/pacchetto.sh').includes('Z="$R/album-carte-pwa.zip"')&&L.ZIP===path.join(R,'album-carte-pwa.zip'),'zip nella cartella del progetto');
-for(const [t,m] of [['carte-pokemon-5vf','progetto Cloudflare'],['Create deployment','come caricare lo zip'],['pacchetto.sh','crea lo zip'],['xcodebuild','compila lo Swift sul Mac'],['git status','controllo all\'avvio'],['niente rilascio con test falliti','test prima del rilascio']]) ok(cm.includes(t),'CLAUDE.md: '+m);
+for(const [t,m] of [['carte-pokemon-5vf','progetto Cloudflare'],['Create deployment','come caricare lo zip'],['pacchetto.sh','crea lo zip'],['git status','controllo all\'avvio'],['niente rilascio con test falliti','test prima del rilascio']]) ok(cm.includes(t),'CLAUDE.md: '+m);
 ok(!/pull request|GitHub Actions|merge/i.test(cm),'CLAUDE.md senza flusso GitHub');
 // Mac: browser di sistema e timeout facoltativo
 const br=require(path.join(L.SHOT,'browser.js'));
@@ -46,5 +49,5 @@ const mc=rd('app/carte.mobileconfig');
 ok(mc.includes('<string>https://'+sito+'.pages.dev/</string>'),'profilo già puntato al sito');
 // .gitignore: generati e backup personali fuori dal repository
 const gi=rd('.gitignore');
-for(const t of ['.work/','album-carte-pwa.zip','node_modules/','backup-carte-*.json','xcuserdata/']) ok(gi.includes(t),'.gitignore: '+t);
+for(const t of ['.work/','album-carte-pwa.zip','node_modules/','backup-carte-*.json']) ok(gi.includes(t),'.gitignore: '+t);
 console.log('repo_test: '+n+' controlli superati, errori: nessuno');

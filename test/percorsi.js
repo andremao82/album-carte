@@ -11,7 +11,5 @@ module.exports={
   SITE:path.join(ROOT,'app'),            // cartella pubblicata sul sito
   ZIP:path.join(ROOT,'album-carte-pwa.zip'),   // pacchetto da caricare su Cloudflare (non versionato)
   PACCHETTO:path.join(ROOT,'strumenti','pacchetto.sh'),
-  IOS:path.join(ROOT,'ios','CartePokemon')+'/',
-  SWIFT:path.join(ROOT,'ios','CartePokemon','CartePokemon')+'/',
   SHOT:path.join(ROOT,'screenshot'),
 };

@@ -2,10 +2,7 @@
 .work/
 album-carte-pwa.zip
 node_modules/
-# macOS / Xcode
+# macOS
 .DS_Store
-xcuserdata/
-*.xcuserstate
-DerivedData/
 # backup del catalogo (dati personali): non vanno nel repository
 backup-carte-*.json
