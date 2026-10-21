@@ -6,11 +6,13 @@ R="$(cd "$(dirname "$0")/.." && pwd)"; cd "$R"
 [ -d test/node_modules ] || bash strumenti/setup.sh >/dev/null || exit 1
 python3 strumenti/estrai_js.py || { echo "ERRORE: script dell'app non trovato"; exit 1; }
 node --check .work/app.js || { echo "ERRORE DI SINTASSI"; exit 1; }
+# timeout: su macOS non c'è di serie (gtimeout con Homebrew coreutils); senza, i test girano senza limite.
+if command -v timeout >/dev/null; then TO="timeout 120"; elif command -v gtimeout >/dev/null; then TO="gtimeout 120"; else TO=""; fi
 cd test; fail=0; n=0
 for f in *_test.js; do
   [ -n "$1" ] && [[ "$f" != *"$1"* ]] && continue
   n=$((n+1))
-  out=$(timeout 120 node "$f" 2>&1); rc=$?
+  out=$($TO node "$f" 2>&1); rc=$?
   # fallisce se il test si interrompe (eccezione, verifica non superata) o se segnala errori della pagina.
   # Non si cercano parole come "TypeError" nel testo: alcuni test simulano apposta errori di rete.
   err=$(echo "$out" | grep -E "errori" | grep -v "nessuno")

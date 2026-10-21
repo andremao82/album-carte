@@ -1,8 +1,8 @@
 const OUT=require('path').resolve(__dirname,'../.work/shot')+'/'; require('fs').mkdirSync(OUT,{recursive:true});
 // Foglio del backup all'apertura (21/10/2026). Uso: node shot_bksheet.js [dark|light]
-const chromium=require('@sparticuz/chromium').default; const puppeteer=require('puppeteer-core');
+const {launch}=require('./browser');
 const theme=process.argv[2]||'dark';
-(async()=>{ const browser=await puppeteer.launch({args:[...chromium.args,'--no-sandbox'],executablePath:process.env.CHROME_PATH||await chromium.executablePath(),headless:'shell'});
+(async()=>{ const browser=await launch();
   const page=await browser.newPage(); await page.setViewport({width:390,height:844,deviceScaleFactor:2,isMobile:true});
   await page.evaluateOnNewDocument(th=>{
     const DAY=864e5, D=Math.floor(Date.now()/DAY);

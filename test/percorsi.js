@@ -9,7 +9,7 @@ module.exports={
   APP_URL:'file://'+APP,
   APPJS:path.join(WORK,'app.js'),        // JavaScript estratto da test.sh
   SITE:path.join(ROOT,'app'),            // cartella pubblicata sul sito
-  ZIP:path.join(WORK,'album-carte-pwa.zip'),
+  ZIP:path.join(ROOT,'album-carte-pwa.zip'),   // pacchetto da caricare su Cloudflare (non versionato)
   PACCHETTO:path.join(ROOT,'strumenti','pacchetto.sh'),
   IOS:path.join(ROOT,'ios','CartePokemon')+'/',
   SWIFT:path.join(ROOT,'ios','CartePokemon','CartePokemon')+'/',

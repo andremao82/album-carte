@@ -1,9 +1,8 @@
 // 21/10/2026: nel sito le miniature della Home (maggior valore, ultime aggiunte, si sono mossi) erano ingrandite:
 // l'immagine restava alla misura originale e .art ne mostrava solo l'angolo. Verifica nel browser vero (Chromium):
 // ogni immagine di carta deve stare dentro la sua casella, in ogni schermata.
-const R=m=>require(require.resolve(m,{paths:[require('./percorsi').SHOT]}));
-const chromium=R('@sparticuz/chromium').default, puppeteer=R('puppeteer-core'), assert=require('assert');
-(async()=>{ const browser=await puppeteer.launch({args:[...chromium.args,'--no-sandbox'],executablePath:process.env.CHROME_PATH||await chromium.executablePath(),headless:'shell'});
+const {launch}=require(require('./percorsi').SHOT+'/browser.js'), assert=require('assert');
+(async()=>{ const browser=await launch();
   let n=0; const errs=[];
   try {
   const page=await browser.newPage(); await page.setViewport({width:390,height:844,deviceScaleFactor:1,isMobile:true});

@@ -1,6 +1,6 @@
 const OUT=require('path').resolve(__dirname,'../.work/shot')+'/'; require('fs').mkdirSync(OUT,{recursive:true});
-const chromium=require('@sparticuz/chromium').default; const puppeteer=require('puppeteer-core');
-(async()=>{ const browser=await puppeteer.launch({args:[...chromium.args,'--no-sandbox'],executablePath:process.env.CHROME_PATH||await chromium.executablePath(),headless:'shell'});
+const {launch}=require('./browser');
+(async()=>{ const browser=await launch();
   const page=await browser.newPage(); await page.setViewport({width:390,height:844,deviceScaleFactor:2,isMobile:true});
   await page.evaluateOnNewDocument(()=>{
     const DAY=864e5, D=Math.floor(Date.now()/DAY);
