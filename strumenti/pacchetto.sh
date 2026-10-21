@@ -1,6 +1,7 @@
 #!/bin/bash
-# Scrive SITO nel profilo dell'icona e crea .work/album-carte-pwa.zip (caricamento manuale su Cloudflare Pages, di riserva).
-# Con la pubblicazione automatica da GitHub lo zip non serve: basta lanciarlo se cambia SITO (poi commit di app/carte.mobileconfig).
+# Scrive SITO nel profilo dell'icona (app/carte.mobileconfig) e crea .work/album-carte-pwa.zip.
+# La pubblicazione è automatica (Cloudflare Pages collegato a GitHub): lo zip non serve, lo script va lanciato
+# quando cambia SITO, poi commit di app/carte.mobileconfig. Lo zip resta solo come riserva.
 # SITO = indirizzo pubblico del sito: finisce nel profilo dell'icona (carte.mobileconfig).
 SITO="https://carte-pokemon-5vf.pages.dev/"
 set -e; R="$(cd "$(dirname "$0")/.." && pwd)"; A="$R/app"; Z="$R/.work/album-carte-pwa.zip"

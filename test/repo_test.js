@@ -24,14 +24,16 @@ ok(fs.readdirSync(path.join(R,'strumenti','storico')).some(f=>f.startsWith('patc
 const cm=rd('CLAUDE.md');
 for(const [t,m] of [['LEGGIMI.md','rimando alla nota'],['strumenti/test.sh','test dopo ogni modifica'],['test nuovo','un test per funzione nuova'],['mai riscrivere','modifiche mirate'],['screenshot/','controllo a vista'],['compravendita','niente compravendita'],['avvisi di prezzo','niente avvisi di prezzo'],['ambigua','chiedere se ambiguo'],['italiano','lingua'],['non hai potuto verificare','dichiarare il non verificato'],['carte-pokemon-5vf','dominio dei dati']]) ok(cm.includes(t),'CLAUDE.md: '+m);
 ok(!/netlify/i.test(cm),'CLAUDE.md senza Netlify');
-// pubblicazione: stesso progetto e dominio di SITO, solo dopo i test, cartella app/
+// pubblicazione: Cloudflare Pages collegato al repository (merge su main = online), test su ogni push e PR
 const sito=(rd('strumenti/pacchetto.sh').match(/^SITO="https:\/\/([a-z0-9-]+)\.pages\.dev\/"/m)||[])[1];
 ok(sito,'SITO su pages.dev');
-const pub=rd('.github/workflows/pubblica.yml'), ver=rd('.github/workflows/verifica.yml');
-ok(pub.includes('pages deploy app --project-name='+sito+' '),'pubblica app/ sul progetto di SITO');
-ok(/branches:\s*\[main\]/.test(pub)&&/needs:\s*test/.test(pub)&&pub.includes('uses: ./.github/workflows/verifica.yml'),'pubblica solo da main dopo i test');
-ok(pub.includes('secrets.CLOUDFLARE_API_TOKEN')&&pub.includes('secrets.CLOUDFLARE_ACCOUNT_ID')&&!/[0-9a-f]{32}/.test(pub),'segreti presi dai Secrets, nessun valore nel file');
-ok(ver.includes('bash strumenti/setup.sh')&&ver.includes('bash strumenti/test.sh')&&ver.includes('workflow_call'),'verifica esegue setup e test');
+ok(!ex('.github/workflows/pubblica.yml')&&!ex('wrangler.toml'),'nessuna pubblicazione con wrangler/token');
+const wf=fs.readdirSync(path.join(R,'.github','workflows')).map(f=>rd('.github/workflows/'+f)).join('\n');
+ok(!/CLOUDFLARE_API_TOKEN|wrangler/.test(wf),'nessun segreto Cloudflare nei workflow');
+const ver=rd('.github/workflows/verifica.yml');
+ok(/^\s*push:\s*$/m.test(ver)&&/^\s*pull_request:\s*$/m.test(ver)&&!/branches-ignore/.test(ver),'verifica su ogni push e PR, main compreso');
+ok(ver.includes('bash strumenti/setup.sh')&&ver.includes('bash strumenti/test.sh'),'verifica esegue setup e test');
+for(const [t,m] of [['pull request','lavoro tramite PR'],['Verifica','attende il controllo verde'],['merge','rilascio = merge su main'],['anteprima','anteprime dei rami'],['mai merge con test falliti','niente merge con test rossi'],['passaggio al nuovo sito','primo avvio: nuovo SITO']]) ok(cm.includes(t),'CLAUDE.md: '+m);
 // app/: ogni file pubblicato è un file del sito (niente file in più finiti online)
 const zipList=(rd('strumenti/pacchetto.sh').match(/zip -q -X "\$Z" ([^\n]+)/)||[])[1].trim().split(/\s+/).sort();
 ok(JSON.stringify(fs.readdirSync(L.SITE).sort())===JSON.stringify(zipList),'app/ contiene esattamente i file del sito: '+fs.readdirSync(L.SITE).join(' '));

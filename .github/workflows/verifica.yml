@@ -1,10 +1,9 @@
-# Esegue tutti i test a ogni push (main escluso: lì li esegue Pubblica) e a ogni pull request.
+# Esegue tutti i test a ogni push e a ogni pull request. Su una PR verso main deve essere verde prima del merge:
+# il merge su main pubblica il sito (Cloudflare Pages collegato al repository).
 name: Verifica
 on:
   push:
-    branches-ignore: [main]
   pull_request:
-  workflow_call:
 jobs:
   test:
     runs-on: ubuntu-latest
