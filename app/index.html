@@ -772,6 +772,8 @@ textarea.note{font:inherit;font-size:.95rem}
 .ssum .pb[aria-pressed=true]{background:var(--accent-fill)}
 #sets-tools{margin-top:14px}
 #sets-tools .pbrow{margin:12px 0}
+#sets-tools .pbrow.scroll{margin:12px -16px}
+.sprow .cap.sx{margin-top:-3px}
 .sdh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:2px 0 10px}
 .sdh .sdl{min-width:0}
 .sdh .sdl img{display:block;max-height:52px;max-width:96px;object-fit:contain}
@@ -910,7 +912,7 @@ textarea.note{font:inherit;font-size:.95rem}
   <div id="sets-global"></div>
   <div id="sets-tools">
     <label class="sfield"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><input id="ss-q" type="search" placeholder="Cerca un set" aria-label="Cerca un set" autocomplete="off" autocapitalize="off" spellcheck="false"></label>
-    <div id="ss-filter" class="pbrow" role="group" aria-label="Filtro"></div>
+    <div id="ss-filter" class="pbrow scroll" role="group" aria-label="Filtro"></div>
   </div>
   <div id="sets-list"></div>
   <button id="btn-browse" class="btn" type="button" style="width:100%;margin-top:6px">Sfoglia tutti i set</button>
@@ -2818,6 +2820,9 @@ const isComplete = g => { const t = totalOf(g); return t > 0 && g.nums.size >= t
 // carte ufficiali del set (col numero stampato sul totale, senza segrete)
 const officialOf = g => { const m = metaOf(g); return m && m.official > 0 ? m.official : g.official; };
 // carte possedute con numero da 1 al totale ufficiale (segrete e numeri con lettere restano fuori)
+// carte segrete del set (totale completo oltre quello stampato) e quante ne hai: null se il set non ne ha o i totali non si sanno
+const secretsOf = g => { const off = officialOf(g), t = totalOf(g); if (!(off > 0) || !(t > off)) return null;
+  return {n:t - off, own:[...(g.nums || [])].filter(n => /^\d+$/.test(n) && +n > off).length}; };
 const officialHave = (g, off) => [...g.nums].filter(n => /^\d+$/.test(n) && +n >= 1 && +n <= off).length;
 // started: solo i set che hai; official / all: anche i set mai iniziati dell'elenco italiano di TCGdex
 function setsSummary(scope){
@@ -2856,10 +2861,10 @@ function renderSets(){
     '<div class="ssc">' + esc(cap) + '</div><div class="cap" style="font-size:.88rem">' + esc(setsLine(st, sc)) + '</div></div>' +
     '<div class="ring2" role="img" aria-label="Avanzamento ' + esc(setsPercent(st.pct)) + '"><svg viewBox="0 0 88 88" aria-hidden="true"><circle class="rb" cx="44" cy="44" r="39"/><circle class="rf" cx="44" cy="44" r="39" stroke-dasharray="' + dash.toFixed(1) + ' ' + C.toFixed(1) + '"/></svg><b>' + esc(setsPercent(st.pct)) + '</b></div></div>' +
     '<div class="pbrow eq" role="group" aria-label="Ambito">' + SET_SCOPES.map(x => '<button class="pb" type="button" data-scope="' + x[0] + '" aria-pressed="' + (sc === x[0]) + '">' + x[1] + '</button>').join('') + '</div></div>';
-  $('ss-filter').innerHTML = [['open', 'In corso'], ['done', 'Completati'], ['all', 'Tutti i set']].map(f => '<button class="pb" type="button" data-sf="' + f[0] + '" aria-pressed="' + (setsFilter === f[0]) + '">' + f[1] + '</button>').join('');
+  $('ss-filter').innerHTML = [['open', 'In corso'], ['done', 'Completati'], ['all', 'Tutti i set'], ['secret', 'Con segrete']].map(f => '<button class="pb" type="button" data-sf="' + f[0] + '" aria-pressed="' + (setsFilter === f[0]) + '">' + f[1] + '</button>').join('');
   const q = $('ss-q').value.trim().toLowerCase();
-  const list = groups.filter(g => (setsFilter === 'all' || (setsFilter === 'done') === isComplete(g)) && (!q || g.name.toLowerCase().includes(q))).sort((a, b) => b.last - a.last);
-  $('sets-list').innerHTML = list.length ? list.map(setProgressRow).join('') : '<p class="cap" style="margin:8px 4px">' + (setsFilter === 'done' ? 'Nessun set completo, per ora.' : 'Nessun set trovato.') + '</p>';
+  const list = groups.filter(g => (setsFilter === 'all' || (setsFilter === 'secret' ? !!secretsOf(g) : (setsFilter === 'done') === isComplete(g))) && (!q || g.name.toLowerCase().includes(q))).sort((a, b) => b.last - a.last);
+  $('sets-list').innerHTML = list.length ? list.map(setProgressRow).join('') : '<p class="cap" style="margin:8px 4px">' + (setsFilter === 'done' ? 'Nessun set completo, per ora.' : setsFilter === 'secret' ? 'Nessuno dei tuoi set ha carte segrete.' : 'Nessun set trovato.') + '</p>';
 }
 $('sets-global').addEventListener('click', ev => { const b = ev.target.closest('[data-scope]'); if (!b) return; cfg.setsScope = b.dataset.scope; LS.set('pkm_cfg', cfg); renderSets(); });
 $('ss-filter').addEventListener('click', ev => { const b = ev.target.closest('[data-sf]'); if (!b) return; setsFilter = b.dataset.sf; renderSets(); });
@@ -3122,9 +3127,11 @@ function setProgressRow(g){
   const t = totalOf(g), have = g.nums ? g.nums.size : 0, miss = Math.max(0, t - have), p = [];
   if (g.value > 0) p.push(eur(g.value));
   p.push(t > 0 ? (miss === 0 ? 'completo' : 'mancano ' + miss + (miss === 1 ? ' carta' : ' carte')) : have + (have === 1 ? ' carta' : ' carte') + ', totale non noto');
+  // carte segrete su una riga a parte (solo se il set ne ha), così la riga principale non si taglia
+  const sec = secretsOf(g), sx = sec ? '<span class="cap sx">' + sec.n + (sec.n === 1 ? ' carta segreta' : ' carte segrete') + ' · ' + (sec.own ? sec.own + (sec.own === 1 ? ' tua' : ' tue') : 'nessuna tua') + '</span>' : '';
   return '<button class="sprow" type="button" data-set="' + esc(g.key) + '"><span class="logo">' + setThumb(g, metaOf(g)) + '</span><span class="bd">' +
     '<span class="t1"><b>' + esc(g.name) + '</b>' + (g.lang ? '<small>' + esc(g.lang.toUpperCase()) + '</small>' : '') + '<span' + (t > 0 && have >= t ? ' class="a"' : '') + '>' + (t > 0 ? have + ' / ' + t : have) + '</span></span>' +
-    '<span class="tbar"><i style="width:' + (t > 0 ? Math.min(100, have / t * 100) : 0).toFixed(1) + '%"></i></span><span class="cap">' + esc(p.join(' · ')) + '</span></span></button>';
+    '<span class="tbar"><i style="width:' + (t > 0 ? Math.min(100, have / t * 100) : 0).toFixed(1) + '%"></i></span><span class="cap">' + esc(p.join(' · ')) + '</span>' + sx + '</span></button>';
 }
 const moverRow = (r, col) => '<button class="mrow" type="button" data-open="' + esc(r.e.key) + '">' + artHtml(r.e) +
   '<span class="t"><b>' + esc(r.e.name) + '</b><span style="color:' + col + '">' + signed(r.d) + '</span><span class="pc" style="color:' + col + '">' + signedPct(r.pct) + '</span></span></button>';

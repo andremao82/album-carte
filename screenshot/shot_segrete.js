@@ -1,4 +1,5 @@
-// Dettaglio di un set con la sezione "Carte segrete" (22/10/2026). Uso: node shot_segrete.js dark|light → .work/shot/segrete_<tema>.png
+// Carte segrete (22/10/2026): Progressi con la pillola "Con segrete" e dettaglio del set con la sezione "Carte segrete".
+// Uso: node shot_segrete.js dark|light → .work/shot/segrete_elenco_<tema>.png e segrete_<tema>.png
 const {launch}=require('./browser'), path=require('path'), fs=require('fs');
 const P=require('../test/percorsi'), theme=process.argv[2]==='light'?'light':'dark';
 (async()=>{ const browser=await launch();
@@ -16,6 +17,9 @@ const P=require('../test/percorsi'), theme=process.argv[2]==='light'?'light':'da
   },theme);
   await page.goto(P.APP_URL); await new Promise(r=>setTimeout(r,800));
   await page.evaluate(()=>document.querySelector('nav button[data-go="sets"]').click()); await new Promise(r=>setTimeout(r,400));
+  await page.evaluate(()=>document.querySelector('#ss-filter [data-sf="secret"]').click()); await new Promise(r=>setTimeout(r,300));
+  const dir0=path.join(P.WORK,'shot'); fs.mkdirSync(dir0,{recursive:true});
+  await page.evaluate(()=>window.scrollTo(0,0)); await page.screenshot({path:path.join(dir0,'segrete_elenco_'+theme+'.png')}); console.log('segrete_elenco_'+theme+'.png');
   await page.evaluate(()=>document.querySelector('[data-set*="me01"]').click()); await new Promise(r=>setTimeout(r,600));
   await page.evaluate(()=>document.querySelector('.ssec').scrollIntoView({block:'center'})); await new Promise(r=>setTimeout(r,300));
   const dir=path.join(P.WORK,'shot'); fs.mkdirSync(dir,{recursive:true});
