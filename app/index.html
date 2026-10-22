@@ -178,6 +178,7 @@ textarea.note{width:100%;min-height:84px;padding:14px 18px;border-radius:18px;bo
 .seg button{flex:1;min-height:42px;border-radius:999px;border:1px solid var(--line);background:var(--surface);font-weight:600;font-size:.9rem}
 .seg button[aria-pressed=true]{background:var(--accent-soft);border-color:var(--accent-line);color:var(--accent)}
 .sgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.ssec{margin-top:26px}.ssec-note{margin:-4px 0 12px}
 .scell{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;border:0;background:none;color:inherit;font:inherit}
 .scell .im{position:relative;display:grid;place-items:center;width:100%;aspect-ratio:63/88;border-radius:8px;overflow:hidden;background:var(--surface)}
 .scell .im img{width:100%;height:100%;object-fit:contain}
@@ -2946,18 +2947,29 @@ async function renderSetDetail(){
   const cards = sd.cards, total = cards.length, ownedN = cards.filter(c => ownedMap.has(normNum(c.localId))).length, pct = total ? Math.round(ownedN / total * 100) : 0;
   const shown = cards.filter(c => { const has = ownedMap.has(normNum(c.localId)); return setdFilter === 'all' || (setdFilter === 'own' ? has : !has); });
   setdData = {key, sd};
+  // carte segrete: numero oltre il totale ufficiale stampato sul set (es. 103/102), mostrate a parte
+  const off = (sd.cardCount && sd.cardCount.official) || officialOf(g) || 0;
+  const isSecret = c => off > 0 && /^\d+$/.test(normNum(c.localId)) && +normNum(c.localId) > off;
+  const secAll = cards.filter(isSecret), secOwn = secAll.filter(c => ownedMap.has(normNum(c.localId))).length;
+  const mainShown = shown.filter(c => !isSecret(c)), secShown = shown.filter(isSecret);
   const lg = sd.logo || sd.symbol, logo = lg ? '<img src="' + esc(lg) + '.webp" alt="" onerror="this.style.display=\'none\'">' : '';
   const tot = totalOf(g) || total, have = g.nums.size;
   box.innerHTML = head + '<div class="sdh"><span class="sdl">' + (logo || '<span class="ini">' + esc(initials(g.name)) + '</span>') + '</span><span class="sdr"><b>' + (tot ? have + ' di ' + tot : have + ' carte') + '</b>' + (g.value ? '<span class="cap">' + eur(g.value) + '</span>' : '') + '</span></div>' +
     (tot ? '<div class="tbar big"><i style="width:' + Math.min(100, have / tot * 100).toFixed(1) + '%"></i></div>' : '') +
     '<div class="seg" role="group" aria-label="Filtro">' + [['all', 'Tutte (' + total + ')'], ['own', 'Possedute (' + ownedN + ')'], ['miss', 'Mancanti (' + (total - ownedN) + ')']]
       .map(f => '<button type="button" data-f="' + f[0] + '" aria-pressed="' + (setdFilter === f[0]) + '">' + f[1] + '</button>').join('') + '</div>' +
-    (shown.length ? '<div class="sgrid">' + shown.map(c => {
+    (() => { const cell = c => {
       const es = ownedMap.get(normNum(c.localId)), q = es ? es.reduce((s, e) => s + e.qty, 0) : 0;
       const im = c.image ? c.image + '/low.webp' : es ? imgSrc(previewURL(es[0])) : '';
       return '<button class="scell ' + (es ? 'own' : 'miss') + '" type="button" data-cid="' + esc(c.id) + '" data-n="' + esc(c.localId) + '" data-nm="' + esc(c.name) + '" aria-label="' + esc(c.name + ' ' + c.localId) + '"><span class="im">' +
         (im ? '<img src="' + esc(im) + '" alt="" loading="lazy">' : '<i>?</i>') + (q ? '<b class="qb">' + q + '×</b>' : '') + '</span><span class="n">' + esc(c.localId) + '</span></button>';
-    }).join('') + '</div>' : '<div class="empty muted">' + (setdFilter === 'miss' ? 'Non ti manca nessuna carta: set completo!' : 'Nessuna carta da mostrare.') + '</div>');
+    };
+    if (!shown.length) return '<div class="empty muted">' + (setdFilter === 'miss' ? 'Non ti manca nessuna carta: set completo!' : 'Nessuna carta da mostrare.') + '</div>';
+    let h = mainShown.length ? '<div class="sgrid">' + mainShown.map(cell).join('') + '</div>' : '';
+    if (secAll.length) h += '<div class="sec2 ssec"><h2>Carte segrete</h2><span class="cap">' + secOwn + ' di ' + secAll.length + '</span></div>' +
+      '<p class="cap ssec-note">Numero oltre ' + off + ', il totale stampato sul set: non contano tra le ufficiali.</p>' +
+      (secShown.length ? '<div class="sgrid sgrid-sec">' + secShown.map(cell).join('') + '</div>' : '<div class="empty muted">' + (setdFilter === 'own' ? 'Nessuna carta segreta posseduta.' : 'Hai tutte le carte segrete.') + '</div>');
+    return h; })();
 }
 async function addFromSet(g, cid, n){
   const sum = setdData && setdData.sd.cards.find(c => c.id === cid);
