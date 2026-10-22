@@ -2,7 +2,7 @@
 
 Progetto personale: **solo PWA** (l'app nativa SwiftUI è stata abbandonata il 21/10/2026; non riproporla). App web single-file (`app/index.html`, HTML + CSS + JS senza librerie) per catalogare ~500 carte Pokémon, per lo più italiane, usata su iPhone come icona a schermo intero (profilo Web Clip `app/carte.mobileconfig`).
 
-Si lavora con Claude Code **sul Mac dell'utente, in questa cartella** (git locale, nessun GitHub: l'account Claude di lavoro non può collegarsi a GitHub). Il rilascio del sito è **manuale**: tu prepari lo zip, l'utente lo carica su Cloudflare Pages.
+Si lavora con Claude Code **sul Mac dell'utente, in questa cartella** (git locale con copia su GitHub: remote `origin` = https://github.com/andremao82/album-carte.git, dal 22/10/2026; il push usa le credenziali git del Mac, non un connettore di Claude, che l'account di lavoro non permette). Il rilascio del sito è **manuale**: tu prepari lo zip, l'utente lo carica su Cloudflare Pages.
 
 **Prima di toccare il codice leggi `LEGGIMI.md`** (nota di progetto: funzioni, dati, scelte dell'utente, punti aperti). È la memoria del progetto: tutto ciò che va ricordato fra una sessione e l'altra sta lì, non altrove.
 
@@ -22,7 +22,7 @@ Si lavora con Claude Code **sul Mac dell'utente, in questa cartella** (git local
 Il sito è il progetto Cloudflare Pages **`carte-pokemon-5vf`** a caricamento manuale (Direct Upload), indirizzo `https://carte-pokemon-5vf.pages.dev/`.
 1. Aggiorna `LEGGIMI.md` (sezioni Funzioni / App iOS, Punti aperti, data) con cosa è cambiato, scelte dell'utente e cosa resta da verificare sul telefono.
 2. `bash strumenti/test.sh` completo: niente rilascio con test falliti.
-3. Commit su `main` con messaggio in italiano che dica cosa cambia per l'utente (un commit per lavoro; `git log` è lo storico delle modifiche).
+3. Commit su `main` con messaggio in italiano che dica cosa cambia per l'utente (un commit per lavoro; `git log` è lo storico delle modifiche), poi `git push` su GitHub. Il push non pubblica il sito.
 4. Se è cambiato il sito (`app/`): `bash strumenti/pacchetto.sh` → crea **`album-carte-pwa.zip` nella cartella del progetto**. Di' all'utente di caricarlo: dash.cloudflare.com → Workers & Pages → `carte-pokemon-5vf` → Create deployment (o "Nuova distribuzione") → trascina lo zip. Un caricamento per gruppo di modifiche: raggruppa quando puoi.
 5. Nella risposta: cosa è cambiato, se c'è uno zip da caricare, cosa hai verificato, **cosa non hai potuto verificare** (comportamento reale su iPhone, Safari/Web Clip).
 
