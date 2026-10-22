@@ -567,14 +567,15 @@ html,body{color-scheme:var(--scheme)}
 .bkchip.due{background:color-mix(in srgb,var(--orange) 15%,transparent);color:var(--orange)}
 .vcard{padding:16px;margin-top:0;display:flex;flex-direction:column;gap:10px}
 .vtop{display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.9rem;color:var(--muted)}
-.vrow{display:flex;align-items:flex-start;gap:14px}
+.vrow{display:flex;flex-direction:column;align-items:stretch;gap:14px}
 .vl{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
 .vbig{font-size:2.6rem;font-weight:800;letter-spacing:-.03em;line-height:1;white-space:nowrap;font-variant-numeric:tabular-nums}
 .vbig.l{font-size:2.15rem}.vbig.xl{font-size:1.75rem}
 .vpill{padding:5px 10px;border-radius:999px;font-size:.88rem;font-weight:700}
 .vpill.up{color:var(--ok);background:color-mix(in srgb,var(--ok) 15%,transparent)}
 .vpill.down{color:var(--danger);background:color-mix(in srgb,var(--danger) 15%,transparent)}
-.vside{flex:none;width:92px;padding-left:14px;border-left:1px solid var(--line);display:flex;flex-direction:column;gap:8px}
+.vside{display:grid;grid-template-columns:repeat(3,1fr);padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line);text-align:center}
+.vside>div+div{border-left:1px solid var(--line)}
 .vside b{display:block;font-size:1.35rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums}
 .vside b.a{color:var(--accent)}
 .vside span{font-size:.75rem;font-weight:600;color:var(--muted)}
