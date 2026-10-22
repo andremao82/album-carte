@@ -95,8 +95,11 @@ L'utente ha tolto Xcode e **non sviluppa più l'app nativa SwiftUI**: si lavora 
 - Service worker: incrementare `VERSION` se cambia la lista dei file in cache.
 - L'anteprima dentro Claude mostra solo l'aspetto (catalogo vuoto, chiamate esterne bloccate).
 
+- **Icone piene nella barra in basso (22/10/2026)**: su richiesta dell'utente (screenshot della vecchia app nativa) Home, Collezione, Progressi e Pokédex hanno icone **piene** come i simboli SF della nativa (casa con camino e porta, pila di carte, tre libri di cui uno inclinato, griglia 3×3) al posto di quelle a contorno; il tasto giallo di scansione resta a contorno. Classe `svg.f` (`fill:currentColor;stroke:none`). Test `icone_barra_test.js` (Chromium, entrambi i temi), screenshot `node screenshot/shot_barra.js light|dark` → `.work/shot/barra_<tema>.png`.
+
 ## Punti aperti (da verificare sul telefono)
 - Passaggio a Claude Code sul Mac: verificato il 21/10 sera (Node.js 24 LTS installato dall'utente da nodejs.org in `/usr/local/bin`, che nelle sessioni di Claude Code va aggiunto al PATH; Chrome presente; 35 test superati). Con il Mac molto carico i test col browser possono andare oltre i 30 s di navigazione: rilanciarli da soli.
+- Icone piene della barra (22/10): spessore e nitidezza sullo schermo del telefono, in Perla e in Notte blu.
 - Fascia carte / diverse / set sotto il valore (22/10): resa sul telefono con importi lunghi e con i numeri a 4 cifre.
 - Set con segrete in Progressi (22/10): che i totali di TCGdex dei set veri diano il numero giusto di segrete; fila delle pillole che scorre col dito fino a "Con segrete".
 - Carte segrete nel dettaglio del set (22/10): provare con set veri di TCGdex (che `cardCount.official` arrivi nel dettaglio e che le segrete siano quelle giuste, anche in set vecchi con numerazioni strane).
