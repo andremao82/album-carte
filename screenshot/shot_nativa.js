@@ -23,7 +23,7 @@ const theme=process.argv[2]||'dark';
   const snap=async(n,full)=>{ await new Promise(r=>setTimeout(r,350)); await page.screenshot({path:p+n+'.png',fullPage:!!full}); };
   const click=async sel=>{ await page.evaluate(s=>{ document.querySelector(s).click(); window.scrollTo(0,0); },sel); await new Promise(r=>setTimeout(r,150)); };
   await snap('home_full',true);
-  await click('[data-a="value"]'); await snap('value');
+  await click('[data-a="value"]'); await page.evaluate(()=>{ const s=document.getElementById('bk-sheet'); if(s) s.hidden=true; document.querySelectorAll('.sheet-bg,.backdrop').forEach(x=>x.hidden=true); }); await snap('value',true);
   await page.evaluate(()=>history.back()); await new Promise(r=>setTimeout(r,200));
   await click('nav button[data-go="cat"]'); await snap('cat');
   await click('#v-list'); await snap('cat_list'); await click('#v-grid');

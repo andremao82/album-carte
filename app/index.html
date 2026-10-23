@@ -637,6 +637,12 @@ textarea.note{font:inherit;font-size:.95rem}
 .vrow2 .t{flex:1;min-width:0}
 .vrow2 .t b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .vrow2 .v{font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.vrow2 .t .cap{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.vrow2 .spk{width:56px;height:22px;flex:none;display:block}
+.tsum{display:flex;flex-direction:column;gap:10px}
+.tbig{font-size:2rem;font-weight:800;letter-spacing:-.02em;line-height:1.1;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbig .tpc{font-size:1rem;font-weight:700}
+.tsub{margin:14px 0 6px;font-size:.85rem;font-weight:600;color:var(--muted)}
 
 /* pannello "Aggiungi carte" */
 .addsheet{background:var(--sheet-bg);border:0;padding:0 20px calc(28px + env(safe-area-inset-bottom,0px));z-index:32}
@@ -3228,7 +3234,7 @@ function priceMovers(days){
     if (baseDay >= t) continue;                              // serve almeno un giorno di storia
     const b = base / 100; if (!(b > 0)) continue;
     const k = condCoef(e.cond), d = (e.price - b) * k * e.qty;
-    rows.push({e, d, pct:(e.price - b) / b * 100});
+    rows.push({e, d, pct:(e.price - b) / b * 100, baseDay, bv:b * k * e.qty});
     dTot += d; bTot += b * k * e.qty;
   }
   return {rows, dTot, bTot};
@@ -3360,7 +3366,7 @@ function renderHome(){
     h += '<div class="pnl hl bknote" style="margin:0 0 22px"><h3>Fai un backup</h3><p class="muted" style="margin:0 0 10px">' + esc(backupText(bi)) + '</p><div class="trow"><button class="pbtn solid" type="button" data-a="backup">Salva backup</button><button class="pbtn" type="button" data-a="bklater">Più tardi</button></div></div>'; }
   // valore della collezione: variazione dei soli prezzi nel periodo scelto, carte / diverse / set a destra, grafico
   { const mv = priceMovers(homeRange), pct = mv.bTot > 0 ? mv.dTot / mv.bTot * 100 : null, vs = eur(st.val), pts = vhistPoints(homeRange);
-    h += '<div class="pnl vcard"><div class="vtop"><span>Valore della collezione</span><button class="lnk" type="button" data-a="value" aria-label="Dettagli: andamento del valore">Dettagli ›</button></div>' +
+    h += '<div class="pnl vcard"><div class="vtop"><span>Valore della collezione</span><button class="lnk" type="button" data-a="value" aria-label="Trend: andamento del valore e carte salite e scese">Trend ›</button></div>' +
       '<div class="vrow"><div class="vl"><div class="vbig' + sizeCls(vs, 9, 11) + '">' + vs + '</div>' +
       (pct != null && Math.abs(pct) >= 0.05 ? '<span class="vpill ' + (pct >= 0 ? 'up' : 'down') + '">' + (pct >= 0 ? '▲ ' : '▼ ') + signedPct(pct).slice(1) + '</span>' : '') +
       (pct != null ? '<span class="cap">prezzi rispetto a ' + (homeRange ? homeRange + ' giorni fa' : 'l’inizio') + '</span>' : '') +
@@ -3375,7 +3381,7 @@ function renderHome(){
   { const rows = priceMovers(30).rows, ups = rows.filter(r => r.d > 0.004).sort((a, b) => b.d - a.d).slice(0, 3), downs = rows.filter(r => r.d < -0.004).sort((a, b) => a.d - b.d).slice(0, 3);
     if (ups.length || downs.length){
       const box = (t, list, col) => '<div class="mv"><h3>' + t + '</h3>' + (list.length ? list.map(r => moverRow(r, col)).join('') : '<span class="cap">Nessuna</span>') + '</div>';
-      h += '<div class="sec2"><h2>Si sono mossi (30 gg)</h2></div><div class="movers">' + box('Salite', ups, 'var(--ok)') + box('Scese', downs, 'var(--danger)') + '</div>';
+      h += '<div class="sec2"><h2>Si sono mossi (30 gg)</h2><button class="lnk" type="button" data-a="trend">Trend</button></div><div class="movers">' + box('Salite', ups, 'var(--ok)') + box('Scese', downs, 'var(--danger)') + '</div>';
     } }
   { const open = groups.filter(g => { const t = totalOf(g); return t === 0 || g.nums.size < t; }).sort((a, b) => b.last - a.last).slice(0, 3);
     if (open.length) h += '<div class="sec2"><h2>Set in corso</h2><button class="lnk" type="button" data-a="allsets">Tutti</button></div>' + open.map(setProgressRow).join(''); }
@@ -3392,6 +3398,7 @@ $('v-home').addEventListener('click', ev => {
   if (a === 'add') openAdd();
   else if (a === 'settings') openSettings();
   else if (a === 'value') pushView('value', {});
+  else if (a === 'trend'){ valueRange = 30; pushView('value', {}); }
   else if (a === 'allcards'){ cfg.albumSort = 'value'; LS.set('pkm_cfg', cfg); go('cat'); }
   else if (a === 'recentcards'){ cfg.albumSort = 'recent'; LS.set('pkm_cfg', cfg); go('cat'); }
   else if (a === 'allsets') go('sets');
@@ -3399,25 +3406,82 @@ $('v-home').addEventListener('click', ev => {
   else if (a === 'bklater'){ LS.set('pkm_bksnooze', Date.now() + 864e5); renderHome(); }
 });
 
-/* ---------- pagina Valore: periodo, grafico, variazione totale, carte che sono cambiate di più ---------- */
+/* ---------- pagina Trend (era Valore): periodo, riepilogo, grafico, salite e scese in euro, set, massimi e minimi di sempre ---------- */
 let valueRange = 30;
-function renderValue(){
-  const mv = priceMovers(valueRange), rows = mv.rows.slice().sort((a, b) => Math.abs(b.d) - Math.abs(a.d)), pts = vhistPoints(valueRange);
-  let h = '<div class="cd-top"><button class="rbtn glass" type="button" data-a="back" aria-label="Indietro">' + ICON_BACK + '</button><div class="ttl">Valore</div><div style="width:52px;flex:none"></div></div>' +
-    '<div class="seg" role="group" aria-label="Periodo" style="margin-top:0">' + [[7, '7 giorni'], [30, '30 giorni'], [90, '90 giorni'], [0, 'Tutto']].map(r => '<button type="button" data-r="' + r[0] + '" aria-pressed="' + (valueRange === r[0]) + '">' + r[1] + '</button>').join('') + '</div>' +
-    '<div class="pnl" style="margin-top:0">' + (pts.length >= 2 ? areaChart(pts, 200) : '<div class="chnote">Il grafico si riempie con i giorni: serve almeno un secondo aggiornamento dei prezzi.</div>') + '</div>';
-  if (rows.length){
-    const col = mv.dTot >= 0 ? 'var(--ok)' : 'var(--danger)';
-    h += '<div class="pnl trow" style="justify-content:space-between"><span>Variazione totale</span><span><b style="color:' + col + '">' + signed(mv.dTot) + '</b>' + (mv.bTot > 0 ? ' <span class="muted">(' + signedPct(mv.dTot / mv.bTot * 100) + ')</span>' : '') + '</span></div>' +
-      '<div class="sec2"><h2 style="font-size:1rem">Carte che sono cambiate di più</h2></div><div class="pnl vrows" style="margin-top:0;padding:0 14px">' +
-      rows.slice(0, 30).map(r => '<button class="vrow2" type="button" data-open="' + esc(r.e.key) + '">' + artHtml(r.e) + '<span class="t"><b>' + esc(r.e.name) + '</b><span class="cap">' + signedPct(r.pct) + '</span></span><span class="v" style="color:' + (r.d >= 0 ? 'var(--ok)' : 'var(--danger)') + '">' + signed(r.d) + '</span></button>').join('') + '</div>';
+const trendOpen = {up:false, down:false};
+const TREND_N = 10, TREND_SETS = 5, TREND_HL = 5;
+// salite / scese / ferme nel periodo (solo prezzi di mercato), set sommando le loro carte, carte al massimo o al minimo registrato
+function trendData(days){
+  const mv = priceMovers(days), up = [], down = []; let flat = 0;
+  for (const r of mv.rows){ if (r.d > 0.004) up.push(r); else if (r.d < -0.004) down.push(r); else flat++; }
+  up.sort((a, b) => b.d - a.d); down.sort((a, b) => a.d - b.d);
+  const sm = new Map();
+  for (const r of mv.rows){ const k = groupKey(r.e); let g = sm.get(k); if (!g) sm.set(k, g = {key:k, name:r.e.setName || 'Set', d:0, b:0, n:0}); g.d += r.d; g.b += r.bv; g.n += r.e.qty; }
+  const sets = [...sm.values()].map(g => ({...g, pct:g.b > 0 ? g.d / g.b * 100 : 0}));
+  const setUp = sets.filter(g => g.d > 0.004).sort((a, b) => b.d - a.d), setDown = sets.filter(g => g.d < -0.004).sort((a, b) => a.d - b.d);
+  const highs = [], lows = [];
+  for (const e of catalog){
+    if (e.priceManual != null || e.price == null) continue;
+    const s = hist[histKey(e)]; if (!s || !s.length) continue;
+    const vals = s.filter(q => q[0] < dayNow()).map(q => q[1] / 100).concat(e.price), hi = Math.max(...vals), lo = Math.min(...vals), w = condCoef(e.cond) * e.qty;
+    if (hi - lo < 0.01) continue;                            // prezzo mai cambiato: né massimo né minimo
+    if (e.price >= hi - 0.005) highs.push({e, d:(e.price - lo) * w, pct:lo > 0 ? (e.price - lo) / lo * 100 : null, vals});
+    else if (e.price <= lo + 0.005) lows.push({e, d:(e.price - hi) * w, pct:(e.price - hi) / hi * 100, vals});
   }
+  highs.sort((a, b) => b.d - a.d); lows.sort((a, b) => a.d - b.d);
+  return {mv, up, down, flat, setUp, setDown, highs, lows};
+}
+// prezzi di una carta dal punto di partenza del periodo a oggi, per il mini grafico
+function trendSpark(e, baseDay){
+  const t = dayNow(), v = (hist[histKey(e)] || []).filter(q => q[0] >= baseDay && q[0] < t).map(q => q[1] / 100); v.push(e.price); return v; // il punto di oggi è il prezzo attuale
+}
+function sparkSvg(vals, col){
+  if (vals.length < 2) return '<span class="spk"></span>';
+  const W = 56, H = 22, lo = Math.min(...vals), hi = Math.max(...vals);
+  const p = vals.map((v, i) => (i / (vals.length - 1) * W).toFixed(1) + ',' + (hi === lo ? H / 2 : 2 + (hi - v) / (hi - lo) * (H - 4)).toFixed(1));
+  return '<svg class="spk" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true"><polyline points="' + p.join(' ') + '" fill="none" stroke="' + col + '" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>';
+}
+const trendCol = d => d >= 0 ? 'var(--ok)' : 'var(--danger)';
+const trendRow = (r, cap, vals) => '<button class="vrow2" type="button" data-open="' + esc(r.e.key) + '">' + artHtml(r.e) + '<span class="t"><b>' + esc(r.e.name) + '</b><span class="cap">' + cap + '</span></span>' +
+  sparkSvg(vals, trendCol(r.d)) + '<span class="v" style="color:' + trendCol(r.d) + '">' + signed(r.d) + '</span></button>';
+const trendSetRow = g => '<button class="vrow2" type="button" data-set="' + esc(g.key) + '"><span class="t"><b>' + esc(g.name) + '</b><span class="cap">' + g.n + (g.n === 1 ? ' carta' : ' carte') + ' · ' + signedPct(g.pct) + '</span></span>' +
+  '<span class="v" style="color:' + trendCol(g.d) + '">' + signed(g.d) + '</span></button>';
+const trendList = html => '<div class="pnl vrows" style="margin-top:0;padding:0 14px">' + html + '</div>';
+const trendNone = t => '<div class="pnl" style="margin-top:0"><span class="cap">' + t + '</span></div>';
+function renderValue(){
+  const td = trendData(valueRange), mv = td.mv, pts = vhistPoints(valueRange);
+  const moverCap = r => signedPct(r.pct) + ' · ' + eur(unit(r.e)) + (r.e.qty > 1 ? ' ×' + r.e.qty : '');
+  let h = '<div class="cd-top"><button class="rbtn glass" type="button" data-a="back" aria-label="Indietro">' + ICON_BACK + '</button><div class="ttl">Trend</div><div style="width:52px;flex:none"></div></div>' +
+    '<div class="seg" role="group" aria-label="Periodo" style="margin-top:0">' + [[7, '7 giorni'], [30, '30 giorni'], [90, '90 giorni'], [0, 'Tutto']].map(r => '<button type="button" data-r="' + r[0] + '" aria-pressed="' + (valueRange === r[0]) + '">' + r[1] + '</button>').join('') + '</div>';
+  if (mv.rows.length)
+    h += '<div class="pnl tsum" style="margin-top:0"><div class="vtop"><span>Variazione dei prezzi</span><span>' + (valueRange ? 'rispetto a ' + valueRange + ' giorni fa' : 'dall’inizio') + '</span></div>' +
+      '<div class="tbig" style="color:' + trendCol(mv.dTot) + '">' + signed(mv.dTot) + (mv.bTot > 0 ? ' <span class="tpc">' + signedPct(mv.dTot / mv.bTot * 100) + '</span>' : '') + '</div>' +
+      '<div class="vside"><div><b style="color:var(--ok)">' + fmtN(td.up.length) + '</b><span>salite</span></div><div><b style="color:var(--danger)">' + fmtN(td.down.length) + '</b><span>scese</span></div><div><b>' + fmtN(td.flat) + '</b><span>ferme</span></div></div></div>';
+  h += '<div class="pnl"' + (mv.rows.length ? '' : ' style="margin-top:0"') + '><div class="vtop" style="margin-bottom:8px"><span>Valore della collezione</span></div>' + (pts.length >= 2 ? areaChart(pts, 200) : '<div class="chnote">Il grafico si riempie con i giorni: serve almeno un secondo aggiornamento dei prezzi.</div>') + '</div>';
+  if (!mv.rows.length) h += '<div class="chnote" style="margin-top:18px">Le classifiche si riempiono quando i prezzi cambiano: serve almeno un secondo aggiornamento dei prezzi.</div>';
+  else {
+    for (const [k, title, list] of [['up', 'Salite', td.up], ['down', 'Scese', td.down]]){
+      const all = trendOpen[k] || list.length <= TREND_N;
+      h += '<div class="sec2" data-sec="' + k + '"><h2 style="font-size:1rem">' + title + '</h2>' + (list.length > TREND_N ? '<button class="lnk" type="button" data-more="' + k + '">' + (trendOpen[k] ? 'Meno' : 'Tutte (' + list.length + ')') + '</button>' : '') + '</div>' +
+        (list.length ? trendList((all ? list : list.slice(0, TREND_N)).map(r => trendRow(r, moverCap(r), trendSpark(r.e, r.baseDay))).join('')) : trendNone(k === 'up' ? 'Nessuna carta salita nel periodo' : 'Nessuna carta scesa nel periodo'));
+    }
+    if (td.setUp.length || td.setDown.length)
+      h += '<div class="sec2" data-sec="sets"><h2 style="font-size:1rem">Set</h2></div>' +
+        (td.setUp.length ? '<h3 class="tsub">In rialzo</h3>' + trendList(td.setUp.slice(0, TREND_SETS).map(trendSetRow).join('')) : '') +
+        (td.setDown.length ? '<h3 class="tsub">In ribasso</h3>' + trendList(td.setDown.slice(0, TREND_SETS).map(trendSetRow).join('')) : '');
+  }
+  if (td.highs.length || td.lows.length)
+    h += '<div class="sec2" data-sec="hl"><h2 style="font-size:1rem">Massimi e minimi di sempre</h2></div>' +
+      (td.highs.length ? '<h3 class="tsub">Al prezzo più alto</h3>' + trendList(td.highs.slice(0, TREND_HL).map(r => trendRow(r, (r.pct != null ? signedPct(r.pct) + ' dal minimo' : 'dal minimo'), r.vals)).join('')) : '') +
+      (td.lows.length ? '<h3 class="tsub">Al prezzo più basso</h3>' + trendList(td.lows.slice(0, TREND_HL).map(r => trendRow(r, signedPct(r.pct) + ' dal massimo', r.vals)).join('')) : '');
   $('v-value').innerHTML = h;
 }
 $('v-value').addEventListener('click', ev => {
   if (ev.target.closest('svg[data-chart]')) return;
   const rb = ev.target.closest('[data-r]'); if (rb){ valueRange = parseInt(rb.dataset.r, 10); renderValue(); return; }
+  const mb = ev.target.closest('[data-more]'); if (mb){ trendOpen[mb.dataset.more] = !trendOpen[mb.dataset.more]; renderValue(); return; }
   const o = ev.target.closest('[data-open]'); if (o){ pushView('card', {key:o.dataset.open}); return; }
+  const s = ev.target.closest('[data-set]'); if (s){ pushView('setd', {key:s.dataset.set}); return; }
   if (ev.target.closest('[data-a="back"]')) popView();
 });
 
