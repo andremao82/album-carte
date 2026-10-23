@@ -849,7 +849,7 @@ textarea.note{font:inherit;font-size:.95rem}
   <div id="scan-queue"></div>
   <div id="status" class="status" hidden></div>
   <div id="editbox" hidden>
-    <canvas id="editor" class="editor" aria-label="Trascina gli angoli sui bordi della carta"></canvas>
+    <canvas id="editor" class="editor" aria-label="Trascina gli angoli o i lati sui bordi della carta"></canvas>
     <div class="row" style="margin-top:10px">
       <button id="ed-ok" class="btn primary" type="button">Ritaglia e riconosci</button>
       <button id="ed-cancel" class="btn" type="button">Annulla</button>
@@ -1066,7 +1066,7 @@ textarea.note{font:inherit;font-size:.95rem}
 </div>
 <div id="qedge" class="qedge" hidden>
   <p id="qe-msg" class="qe-msg"></p>
-  <div id="qe-wrap" class="qe-wrap"><canvas id="qe-cv" class="editor" aria-label="Trascina gli angoli sui bordi della carta"></canvas></div>
+  <div id="qe-wrap" class="qe-wrap"><canvas id="qe-cv" class="editor" aria-label="Trascina gli angoli o i lati sui bordi della carta"></canvas></div>
   <p id="qe-more" class="muted qe-more" hidden></p>
   <div class="qe-btns">
     <button id="qe-discard" class="btn danger" type="button" data-qe="discard">Scarta</button>
@@ -1418,9 +1418,10 @@ function defaultQuad(pw, ph){
   return [[x, y], [x + w, y], [x + w, y + h], [x, y + h]];
 }
 
-// porta il quadrilatero in verticale (lato lungo = altezza); flip = carta capovolta di 180°
+// porta il quadrilatero in verticale (lato lungo = altezza); flip = carta capovolta di 180°.
+// Gli angoli si riordinano sempre rispetto alla foto: bordi salvati o trascinati in un altro ordine non capovolgono il ritaglio.
 function orderQuad(q, flip){
-  let p = q.map(a => a.slice());
+  let p = sortCorners(q.map(a => a.slice()));
   if (dist(p[0], p[1]) > dist(p[0], p[3])) p = [p[1], p[2], p[3], p[0]];
   if (flip) p = [p[2], p[3], p[0], p[1]];
   return p;
@@ -1486,8 +1487,8 @@ function insetQuad(q, f){
   return q.map(p => [cx + (p[0] - cx) * (1 - f), cy + (p[1] - cy) * (1 - f)]);
 }
 
-// px: RGBA di un'immagine ridotta (w×h). Restituisce {quad, ok} in coordinate dell'immagine ridotta.
-function detectFromPixels(px, w, h){
+// metodo per colore: la carta è ciò che si stacca dal colore dello sfondo (sbaglia con ombre e sfondi simili alla cornice)
+function maskQuad(px, w, h){
   const N = w * h;
   // colore di sfondo = mediana dei pixel lungo il bordo
   const m = Math.max(2, Math.round(Math.min(w, h) * 0.03));
@@ -1572,6 +1573,172 @@ function detectFromPixels(px, w, h){
   const a1 = dist(tl, tr), b1 = dist(tl, bl), ratio = Math.min(a1, b1) / (Math.max(a1, b1) || 1);
   const ok = frac > 0.06 && frac < 0.98 && fit > 0.8 && fit < 1.2 && ratio > 0.58 && ratio < 0.88;
   return {quad, ok};
+}
+
+// angoli in ordine alto-sx, alto-dx, basso-dx, basso-sx rispetto alla foto (senza questo il ritaglio poteva uscire capovolto)
+function sortCorners(q){
+  const cx = (q[0][0] + q[1][0] + q[2][0] + q[3][0]) / 4, cy = (q[0][1] + q[1][1] + q[2][1] + q[3][1]) / 4;
+  const p = q.slice().sort((a, b) => Math.atan2(a[1] - cy, a[0] - cx) - Math.atan2(b[1] - cy, b[0] - cx));
+  let s = 0; for (let i = 1; i < 4; i++) if (p[i][0] + p[i][1] < p[s][0] + p[s][1]) s = i;
+  return [p[s], p[(s + 1) % 4], p[(s + 2) % 4], p[(s + 3) % 4]];
+}
+
+// gradiente a colori (Sobel sul massimo dei tre canali, dopo una leggera sfocatura)
+function gradMap(px, w, h){
+  const N = w * h, C = [new Float32Array(N), new Float32Array(N), new Float32Array(N)];
+  for (let k = 0; k < 3; k++){
+    const a = C[k], t = new Float32Array(N);
+    for (let i = 0; i < N; i++) a[i] = px[i * 4 + k];
+    for (let pass = 0; pass < 2; pass++){
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){ const i = y * w + x; t[i] = (a[x > 0 ? i - 1 : i] + a[i] + a[x < w - 1 ? i + 1 : i]) / 3; }
+      for (let y = 0; y < h; y++) for (let x = 0; x < w; x++){ const i = y * w + x; a[i] = (t[y > 0 ? i - w : i] + t[i] + t[y < h - 1 ? i + w : i]) / 3; }
+    }
+  }
+  const gx = new Float32Array(N), gy = new Float32Array(N), mag = new Float32Array(N);
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++){
+    const i = y * w + x; let bm = -1, bx = 0, by = 0;
+    for (let k = 0; k < 3; k++){
+      const a = C[k];
+      const sx = a[i - w + 1] + 2 * a[i + 1] + a[i + w + 1] - a[i - w - 1] - 2 * a[i - 1] - a[i + w - 1];
+      const sy = a[i + w - 1] + 2 * a[i + w] + a[i + w + 1] - a[i - w - 1] - 2 * a[i - w] - a[i - w + 1];
+      const m = sx * sx + sy * sy; if (m > bm){ bm = m; bx = sx; by = sy; }
+    }
+    gx[i] = bx; gy[i] = by; mag[i] = Math.sqrt(bm);
+  }
+  return {gx, gy, mag, w, h};
+}
+
+// quanto i quattro lati del quadrilatero poggiano su bordi netti della foto (0-1 per lato; gli angoli arrotondati non contano)
+function quadSupport(G, q, thr){
+  const {gx, gy, w, h} = G, sides = [];
+  for (let i = 0; i < 4; i++){
+    const a = q[i], b = q[(i + 1) % 4], len = dist(a, b); if (len < 8) return [0, 0, 0, 0];
+    const nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len, n = Math.max(12, Math.min(60, Math.round(len / 4)));
+    let hit = 0;
+    for (let s = 0; s < n; s++){
+      const t = 0.1 + 0.8 * s / (n - 1), x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+      let best = 0;
+      for (let k = -2; k <= 2; k++){
+        const xi = Math.round(x + nx * k), yi = Math.round(y + ny * k);
+        if (xi < 1 || yi < 1 || xi >= w - 1 || yi >= h - 1) continue;
+        const j = yi * w + xi, v = Math.abs(gx[j] * nx + gy[j] * ny); if (v > best) best = v;
+      }
+      if (best > thr) hit++;
+    }
+    sides.push(hit / n);
+  }
+  return sides;
+}
+
+// ricerca dei lati dritti (trasformata di Hough sui bordi) e scelta del quadrilatero con le proporzioni di una carta
+function lineQuads(G, thr){
+  const {gx, gy, mag, w, h} = G, diag = Math.ceil(Math.hypot(w, h)), NR = 2 * diag + 1, NT = 180;
+  const acc = new Float32Array(NT * NR), cs = [], sn = [];
+  for (let t = 0; t < NT; t++){ cs.push(Math.cos(t * Math.PI / NT)); sn.push(Math.sin(t * Math.PI / NT)); }
+  const pts = [];
+  for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++){
+    const i = y * w + x, m = mag[i]; if (m < thr) continue;
+    // massimo locale lungo il gradiente (bordi sottili)
+    const ux = gx[i] / m, uy = gy[i] / m, dx = Math.round(ux), dy = Math.round(uy);
+    if (m < mag[i + dy * w + dx] || m < mag[i - dy * w - dx]) continue;
+    let th = Math.atan2(uy, ux); if (th < 0) th += Math.PI; if (th >= Math.PI) th -= Math.PI;
+    const tc = Math.round(th * NT / Math.PI);
+    pts.push(x, y, tc);
+    for (let d = -10; d <= 10; d++){
+      let t = tc + d; if (t < 0) t += NT; else if (t >= NT) t -= NT;
+      acc[t * NR + Math.round(x * cs[t] + y * sn[t]) + diag] += 1;
+    }
+  }
+  // picchi: massimi locali dell'accumulatore, poi le rette più votate e lontane fra loro
+  const minV = Math.min(w, h) * 0.1, peaks = [];
+  for (let t = 0; t < NT; t++) for (let r = 2; r < NR - 2; r++){
+    const v = acc[t * NR + r]; if (v < minV) continue;
+    let mx = true;
+    for (let dt = -2; dt <= 2 && mx; dt++){ let tt = t + dt, rr = r; if (tt < 0){ tt += NT; rr = NR - 1 - r; } else if (tt >= NT){ tt -= NT; rr = NR - 1 - r; }
+      for (let dr = -2; dr <= 2; dr++){ if (!dt && !dr) continue; const u = acc[tt * NR + rr + dr]; if (u > v || (u === v && (dt < 0 || (!dt && dr < 0)))){ mx = false; break; } } }
+    if (mx) peaks.push([v, t, r - diag]);
+  }
+  peaks.sort((a, b) => b[0] - a[0]);
+  const lines = [];
+  for (const [v, t, r] of peaks){
+    if (lines.length >= 60) break;
+    if (lines.some(L => { let dt = Math.abs(L.t - t), rr = r; if (dt > NT / 2){ dt = NT - dt; rr = -r; } return dt <= 2 && Math.abs(L.r - rr) <= 2; })) continue;
+    lines.push({t, r, v});
+  }
+  // ogni retta si rifinisce sui punti di bordo vicini (minimi quadrati)
+  const L2 = [];
+  for (const L of lines){
+    const c = cs[L.t], s = sn[L.t], sel = [];
+    for (let k = 0; k < pts.length; k += 3){
+      let dt = Math.abs(pts[k + 2] - L.t); if (dt > NT / 2) dt = NT - dt; if (dt > 15) continue;
+      if (Math.abs(pts[k] * c + pts[k + 1] * s - L.r) <= 2) sel.push([pts[k], pts[k + 1]]);
+    }
+    if (sel.length < minV * 0.5) continue;
+    // solo il tratto continuo più lungo (i punti sparsi dello sfondo lungo la retta storcerebbero l'adattamento)
+    sel.sort((p, q) => (p[0] * -s + p[1] * c) - (q[0] * -s + q[1] * c));
+    let bs = 0, be = 0, st0 = 0;
+    for (let k = 1; k <= sel.length; k++){
+      const gap = k < sel.length ? (sel[k][0] - sel[k - 1][0]) * -s + (sel[k][1] - sel[k - 1][1]) * c : 1e9;
+      if (gap > 6){ if (k - st0 > be - bs){ bs = st0; be = k; } st0 = k; }
+    }
+    const seg = sel.slice(bs, be); if (seg.length < minV * 0.5) continue;
+    const f = fitLine(seg); let ang = Math.atan2(f.d[1], f.d[0]); if (ang < 0) ang += Math.PI; if (ang >= Math.PI) ang -= Math.PI;
+    L2.push({p:f.p, d:f.d, ang, v:L.v});
+  }
+  // coppie di rette quasi parallele, poi due coppie quasi perpendicolari
+  const angD = (a, b) => { let d = Math.abs(a - b) % Math.PI; return d > Math.PI / 2 ? Math.PI - d : d; };
+  const pairs = [], mn = Math.min(w, h);
+  for (let i = 0; i < L2.length; i++) for (let j = i + 1; j < L2.length; j++){
+    const A = L2[i], B = L2[j]; if (angD(A.ang, B.ang) > 0.21) continue;
+    const sep = Math.abs((B.p[0] - A.p[0]) * -A.d[1] + (B.p[1] - A.p[1]) * A.d[0]); if (sep < mn * 0.12) continue;
+    pairs.push([A, B]);
+  }
+  // solo le coppie più votate (con sfondi a righe o quadretti le combinazioni sarebbero migliaia)
+  pairs.sort((p, q) => Math.min(q[0].v, q[1].v) - Math.min(p[0].v, p[1].v)); if (pairs.length > 200) pairs.length = 200;
+  const out = [];
+  for (let i = 0; i < pairs.length; i++) for (let j = i + 1; j < pairs.length; j++){
+    const [A, B] = pairs[i], [C, D] = pairs[j];
+    if (angD(A.ang, C.ang) < 1.13) continue;
+    const c1 = intersect(A, C), c2 = intersect(A, D), c3 = intersect(B, D), c4 = intersect(B, C);
+    if (!c1 || !c2 || !c3 || !c4) continue;
+    const q = [c1, c2, c3, c4];
+    if (q.some(p => p[0] < -w * 0.03 || p[1] < -h * 0.03 || p[0] > w * 1.03 || p[1] > h * 1.03)) continue;
+    out.push(sortCorners(q));
+  }
+  return out;
+}
+
+// forma da carta: proporzioni 63×88 (con un po' di prospettiva), lati opposti simili, grandezza ragionevole
+function cardShape(q, w, h){
+  const s = [0, 1, 2, 3].map(i => dist(q[i], q[(i + 1) % 4]));
+  if (Math.min(...s) < 8) return 0;
+  const a = (s[0] + s[2]) / 2, b = (s[1] + s[3]) / 2, ratio = Math.min(a, b) / Math.max(a, b);
+  const par = Math.min(s[0], s[2]) / Math.max(s[0], s[2]), par2 = Math.min(s[1], s[3]) / Math.max(s[1], s[3]);
+  const frac = polyArea(q) / (w * h);
+  if (ratio < 0.6 || ratio > 0.86 || par < 0.72 || par2 < 0.72 || frac < 0.05 || frac > 0.97) return 0;
+  return frac;
+}
+
+// px: RGBA di un'immagine ridotta (w×h). Restituisce {quad, ok} in coordinate dell'immagine ridotta.
+// Due metodi a confronto: separazione carta/sfondo per colore e ricerca dei quattro lati dritti; vince il quadrilatero
+// con le proporzioni di una carta che poggia meglio su bordi netti (le ombre hanno bordi sfumati e non vincono).
+function detectFromPixels(px, w, h){
+  const m = maskQuad(px, w, h), G = gradMap(px, w, h);
+  const ms = Array.from(G.mag).filter((_, i) => i % 7 === 0).sort((a, b) => a - b);
+  const thr = Math.max(20, (ms[Math.floor(ms.length * 0.9)] || 0) * 0.4);
+  const cands = lineQuads(G, thr);
+  if (m.quad) cands.push(sortCorners(m.quad));
+  const scored = [];
+  for (const q of cands){
+    const frac = cardShape(q, w, h); if (!frac) continue;
+    const sp = quadSupport(G, q, thr), mean = (sp[0] + sp[1] + sp[2] + sp[3]) / 4, low = Math.min(...sp);
+    scored.push({q, frac, mean, low, s: mean * (0.5 + 0.5 * low)});
+  }
+  // a parità di appoggio vince il più grande (il bordo esterno della carta, non il riquadro dell'illustrazione)
+  const top = scored.reduce((a, c) => Math.max(a, c.s), 0); let best = null, bestS = -Infinity;
+  for (const c of scored){ const v = c.s >= top * 0.85 ? c.frac + c.s : c.s - 100; if (v > bestS){ bestS = v; best = c; } }
+  if (!best) return m.quad ? {quad: sortCorners(m.quad), ok: false} : {quad: null, ok: false};
+  return {quad: best.q, ok: best.s >= 0.9 && best.low >= 0.75};
 }
 
 // omografia: mappa i punti di destinazione (u,v) su quelli sorgente (x,y)
@@ -1736,13 +1903,15 @@ function nextDailyReset(now = Date.now()){
 const hhmm = t => new Date(t).toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
 // modelli con la quota del giorno finita (solo in memoria): non si richiamano fino all'azzeramento
 const dailyBlocked = {};
+// modelli che di recente non hanno risposto entro il tempo (solo in memoria): si provano per ultimi
+const slowModels = {};
 // "Automatico": il primo modello concreto dell'elenco; l'alias solo se l'elenco manca (l'alias è spesso il più carico)
 const preferredModel = (model, known) => model || (known && known[0]) || GEMINI_ALIAS;
 function modelQueue(model, known){
   const q = []; for (const m of [preferredModel(model, known)].concat((known || []).slice(0, 4), [GEMINI_ALIAS])) if (!q.includes(m)) q.push(m);
   return q;
 }
-async function callGemini(model, dataUrl, raw, thinkStart){
+async function callGemini(model, dataUrl, raw, thinkStart, tries = GEMINI_TRIES){
   for (let i = thinkStart || 0; i < THINK.length; i++){
     const gc = {temperature:0, maxOutputTokens:1024, responseMimeType:'application/json'};
     if (THINK[i]) gc.thinkingConfig = THINK[i];
@@ -1760,8 +1929,8 @@ async function callGemini(model, dataUrl, raw, thinkStart){
       } catch(e){
         clearTimeout(to);
         if (e && e.name === 'AbortError'){
-          if (attempt < GEMINI_TRIES) continue;
-          throw new Error('Gemini non risponde (' + GEMINI_TRIES + ' tentativi da ' + Math.round(GEMINI_TIMEOUT / 1000) + ' s, modello ' + model + ', invio ' + Math.round(body.length / 1024) + ' KB): riprova, o usa "Prova la connessione" in Impostazioni.');
+          if (attempt < tries) continue;
+          throw gemErr('Gemini non risponde (' + tries + (tries === 1 ? ' tentativo' : ' tentativi') + ' da ' + Math.round(GEMINI_TIMEOUT / 1000) + ' s, modello ' + model + ', invio ' + Math.round(body.length / 1024) + ' KB): riprova, o usa "Prova la connessione" in Impostazioni.', {timeout:true});
         }
         throw netErr(e);
       }
@@ -1795,21 +1964,28 @@ async function callGemini(model, dataUrl, raw, thinkStart){
 }
 async function recognizeGemini(dataUrl, raw){
   const known = Array.isArray(cfg.gmodels) ? cfg.gmodels : [], model = cfg.gmodel || '', queue = modelQueue(model, known), tried = [];
-  let listed = known.length > 0, listedModels = null, netError = null, busyError = null, dailyHit = false;
+  let listed = known.length > 0, listedModels = null, netError = null, busyError = null, dailyHit = false, timeouts = 0, timeoutError = null;
+  const now = Date.now(); queue.sort((a, b) => ((slowModels[a] || 0) > now) - ((slowModels[b] || 0) > now));
   while (queue.length && tried.length < 6){
     const m = queue.shift(); if (tried.includes(m)) continue; tried.push(m);
     if (dailyBlocked[m] && dailyBlocked[m] > Date.now()) dailyHit = true;   // quota del giorno già finita: non lo si richiama
     else {
       try {
-        const r = await callGemini(m, dataUrl, raw, m === model && typeof cfg.gthink === 'number' ? cfg.gthink : 0);
+        // dopo un modello che non risponde, il successivo ha un solo tentativo (la carta non resta ferma minuti)
+        const r = await callGemini(m, dataUrl, raw, m === model && typeof cfg.gthink === 'number' ? cfg.gthink : 0, timeouts ? 1 : GEMINI_TRIES);
         if (listedModels && listedModels.length) cfg.gmodels = listedModels;
         // con "Automatico" resta automatico; un modello scelto che non risponde viene sostituito da quello che ha funzionato
         if (cfg.gmodel && m !== cfg.gmodel && !dailyHit) cfg.gmodel = m;
         cfg.gthink = r.think; LS.set('pkm_cfg', cfg);
         return r.rec;
       } catch(e){
-        // limite al minuto e altri errori veri: si ferma qui (la coda aspetta); quota del giorno o sovraccarico: modello successivo
-        if (!e.notFound && !e.net && !e.busy && !e.daily) throw e;
+        // limite al minuto e altri errori veri: si ferma qui (la coda aspetta); quota del giorno o sovraccarico: modello successivo.
+        // Modello che non risponde: per un quarto d'ora passa in fondo alla fila; si prova il successivo, al secondo silenzio ci si ferma.
+        if (e.timeout){
+          slowModels[m] = Date.now() + 15 * 60000; timeoutError = e;
+          if (++timeouts >= 2) throw gemErr('Gemini non risponde (provati ' + tried.slice(-2).join(' e ') + ', ' + Math.round(GEMINI_TIMEOUT / 1000) + ' s per tentativo): riprova più tardi, o usa "Prova la connessione" in Impostazioni.', {timeout:true});
+        }
+        else if (!e.notFound && !e.net && !e.busy && !e.daily) throw e;
         if (e.net && !netError) netError = e;
         if (e.busy && !busyError) busyError = e;
         if (e.daily){ dailyHit = true; dailyBlocked[m] = nextDailyReset(); }
@@ -1827,6 +2003,7 @@ async function recognizeGemini(dataUrl, raw){
   }
   if (busyError) throw gemErr('Gemini è sovraccarico su tutti i modelli provati (' + tried.join(', ') + '): riprova tra qualche minuto.', {busy:true});
   if (netError) throw netError;
+  if (timeoutError) throw timeoutError;
   throw new Error('Nessun modello Gemini disponibile con questa chiave: controlla l’elenco in Impostazioni (icona in alto a destra nella Home).');
 }
 
@@ -2133,15 +2310,24 @@ function warp(photo, q, W = 756, H = 1056, enh = cfg.enhance){
   return out;
 }
 
-/* editor dei bordi: si trascinano i 4 angoli */
+/* editor dei bordi: si trascinano i 4 angoli o il centro dei 4 lati (ed.drag 0-3 angoli, 4-7 lati: il lato i va dall'angolo i al successivo) */
+const edMid = (q, i) => [(q[i][0] + q[(i + 1) % 4][0]) / 2, (q[i][1] + q[(i + 1) % 4][1]) / 2];
 function drawEditor(){
   const cv = ed.cv, g = cv.getContext('2d'), d = ed.dpr;
   g.clearRect(0, 0, cv.width, cv.height); g.drawImage(ed.photo, 0, 0, cv.width, cv.height);
   const q = ed.quad.map(p => [p[0] * ed.k, p[1] * ed.k]);
   g.lineWidth = 3 * d; g.strokeStyle = '#FFCB2F'; g.beginPath();
   q.forEach((p, i) => i ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])); g.closePath(); g.stroke();
+  // maniglie dei lati: trattini arrotondati al centro di ogni lato, nella sua direzione
+  g.lineCap = 'round';
+  for (let i = 0; i < 4; i++){
+    const a = q[i], b = q[(i + 1) % 4], m = edMid(q, i), len = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1, hl = Math.min(16 * d, len / 4) * (ed.drag === 4 + i ? 0.5 : 1);
+    const ux = (b[0] - a[0]) / len * hl, uy = (b[1] - a[1]) / len * hl;
+    [[14, '#12203A'], [10, 'rgba(255,203,47,.95)']].forEach(([lw, col]) => { g.lineWidth = lw * d; g.strokeStyle = col; g.beginPath(); g.moveTo(m[0] - ux, m[1] - uy); g.lineTo(m[0] + ux, m[1] + uy); g.stroke(); });
+  }
+  g.lineCap = 'butt';
   q.forEach((p, i) => { g.beginPath(); g.arc(p[0], p[1], (i === ed.drag ? 6 : 12) * d, 0, 7); g.fillStyle = 'rgba(255,203,47,.9)'; g.fill(); g.lineWidth = 2 * d; g.strokeStyle = '#12203A'; g.stroke(); });
-  if (ed.drag >= 0) drawLoupe(g, q, q[ed.drag]);
+  if (ed.drag >= 0) drawLoupe(g, q, ed.drag < 4 ? q[ed.drag] : edMid(q, ed.drag - 4));
 }
 // centro della lente: sopra il dito; se in alto non c'è spazio, di lato verso il centro (mai sotto il dito). Sempre dentro il riquadro.
 function loupePos(hx, hy, W, H, R, gap, m){
@@ -2149,7 +2335,7 @@ function loupePos(hx, hy, W, H, R, gap, m){
   if (cy < R + m){ cx = hx < W / 2 ? hx + R + gap : hx - R - gap; cy = hy; }
   return [Math.min(Math.max(W - R - m, R + m), Math.max(R + m, cx)), Math.min(Math.max(H - R - m, R + m), Math.max(R + m, cy))];
 }
-// lente d'ingrandimento: mostra ingrandita (x3) la zona sotto l'angolo che stai spostando
+// lente d'ingrandimento: mostra ingrandita (x3) la zona sotto l'angolo (o il centro del lato) che stai spostando
 function drawLoupe(g, q, h){
   const d = ed.dpr, R = 58 * d, Z = 3, W = g.canvas.width;
   const [cx, cy] = loupePos(h[0], h[1], W, g.canvas.height, R, 38 * d, 4 * d);
@@ -2181,17 +2367,29 @@ function closeEditor(){ $('editbox').hidden = true; ed.quad = null; ed.drag = -1
 
 // stesso editor per la pagina di aggiunta (#editor) e per la scansione rapida (#qe-cv): ed.cv è quello attivo
 const edPos = e => { const r = ed.cv.getBoundingClientRect(); return [(e.clientX - r.left) / r.width * ed.photo.width, (e.clientY - r.top) / r.height * ed.photo.height]; };
+const edClamp = p => [Math.min(ed.photo.width, Math.max(0, p[0])), Math.min(ed.photo.height, Math.max(0, p[1]))];
 function moveHandle(e){
   const [x, y] = edPos(e);
-  ed.quad[ed.drag] = [Math.min(ed.photo.width, Math.max(0, x + ed.off[0])), Math.min(ed.photo.height, Math.max(0, y + ed.off[1]))];
+  if (ed.drag < 4) ed.quad[ed.drag] = edClamp([x + ed.off[0], y + ed.off[1]]);
+  else {
+    // lato: si sposta parallelo a sé stesso (solo perpendicolarmente) e i suoi due angoli scorrono sui lati vicini
+    const i = ed.drag - 4, j = (i + 1) % 4, B = ed.base, a = B[i], b = B[j], len = dist(a, b) || 1;
+    const nx = -(b[1] - a[1]) / len, ny = (b[0] - a[0]) / len, t = (x - ed.start[0]) * nx + (y - ed.start[1]) * ny;
+    const moved = {p:[a[0] + nx * t, a[1] + ny * t], d:[(b[0] - a[0]) / len, (b[1] - a[1]) / len]};
+    const side = (p, q) => { const l = dist(p, q) || 1; return {p, d:[(q[0] - p[0]) / l, (q[1] - p[1]) / l]}; };
+    const ci = intersect(moved, side(B[(i + 3) % 4], a)), cj = intersect(moved, side(b, B[(j + 1) % 4]));
+    ed.quad[i] = edClamp(ci || [a[0] + nx * t, a[1] + ny * t]); ed.quad[j] = edClamp(cj || [b[0] + nx * t, b[1] + ny * t]);
+  }
   drawEditor();
 }
 function bindEditor(cv){
   cv.addEventListener('pointerdown', e => {
     if (!ed.quad || ed.cv !== cv) return; e.preventDefault();
     const [x, y] = edPos(e); let bi = 0, bd = 1e18;
-    ed.quad.forEach((p, i) => { const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd){ bd = d; bi = i; } });
-    ed.drag = bi; ed.off = [ed.quad[bi][0] - x, ed.quad[bi][1] - y]; try { cv.setPointerCapture(e.pointerId); } catch(err){} moveHandle(e);
+    // la maniglia più vicina al dito, fra i 4 angoli e i 4 centri dei lati
+    ed.quad.concat([0, 1, 2, 3].map(i => edMid(ed.quad, i))).forEach((p, i) => { const d = (p[0] - x) ** 2 + (p[1] - y) ** 2; if (d < bd){ bd = d; bi = i; } });
+    ed.drag = bi; ed.base = ed.quad.map(p => p.slice()); ed.start = [x, y];
+    ed.off = bi < 4 ? [ed.quad[bi][0] - x, ed.quad[bi][1] - y] : [0, 0]; try { cv.setPointerCapture(e.pointerId); } catch(err){} moveHandle(e);
   });
   cv.addEventListener('pointermove', e => { if (ed.drag >= 0 && ed.cv === cv) moveHandle(e); });
   ['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, () => { if (ed.cv !== cv) return; ed.drag = -1; if (ed.quad) drawEditor(); }));
@@ -2231,7 +2429,7 @@ $('ed-cancel').addEventListener('click', () => {
   closeEditor(); setStatus('');
   if (scan.crop){ $('preview').hidden = false; $('cropact').hidden = false; }
 });
-$('btn-edges').addEventListener('click', () => { if (scan.photo) openEditor('Trascina gli angoli sui bordi della carta, poi conferma.'); });
+$('btn-edges').addEventListener('click', () => { if (scan.photo) openEditor('Trascina angoli o lati sui bordi della carta, poi conferma.'); });
 $('btn-recog').addEventListener('click', guard(identify));
 $('btn-flip').addEventListener('click', guard(async () => { if (!scan.photo) return; scan.flip = !scan.flip; await cropAndRecognize(); }));
 
@@ -2258,7 +2456,7 @@ $('file').addEventListener('change', async e => {
     await new Promise(r => setTimeout(r, 30)); if (job !== scanJob) return;
     const det = detectCard(photo); scan.quad = det.quad;
     if (cfg.confirmEdges || !det.ok){
-      openEditor(det.ok ? 'Controlla i bordi, poi conferma.' : 'Non trovo bene i bordi: trascina gli angoli sulla carta, poi conferma.');
+      openEditor(det.ok ? 'Controlla i bordi, poi conferma.' : 'Non trovo bene i bordi: trascina angoli o lati sulla carta, poi conferma.');
       return;
     }
     await cropAndRecognize();
@@ -3818,7 +4016,7 @@ async function openQEdit(job){
   if (qeJob !== job) return;
   $('qe-discard').textContent = 'Scarta'; $('qe-later').hidden = false;
   $('qedge').hidden = false;
-  $('qe-msg').textContent = job.status === 'edges' ? (job.ok ? 'Controlla i bordi, poi conferma.' : 'Non trovo bene i bordi: trascina gli angoli sulla carta, poi conferma.') : 'Trascina gli angoli sui bordi della carta e conferma: la carta verrà letta di nuovo.';
+  $('qe-msg').textContent = job.status === 'edges' ? (job.ok ? 'Controlla i bordi, poi conferma.' : 'Non trovo bene i bordi: trascina angoli o lati sulla carta, poi conferma.') : 'Trascina angoli o lati sui bordi della carta e conferma: la carta verrà letta di nuovo.';
   qeMore();
   qeLayout(c, job.quad ? denormQuad(job.quad, c.width, c.height) : defaultQuad(c.width, c.height));
 }
@@ -3826,7 +4024,7 @@ async function openQEdit(job){
 function openPhotoEdit(c, quad, onOk, discardLabel){
   qeJob = {photoMode:true, onOk};
   $('qe-discard').textContent = discardLabel || 'Annulla'; $('qe-later').hidden = true; $('qe-more').hidden = true;
-  $('qedge').hidden = false; $('qe-msg').textContent = 'Trascina gli angoli sui bordi della carta, poi conferma.';
+  $('qedge').hidden = false; $('qe-msg').textContent = 'Trascina angoli o lati sui bordi della carta, poi conferma.';
   qeLayout(c, quad);
 }
 function qeLayout(c, quad){
