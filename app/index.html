@@ -255,6 +255,18 @@ textarea.note{width:100%;min-height:84px;padding:14px 18px;border-radius:18px;bo
 .qframe{position:absolute;inset:7% 13%;border:3px solid rgba(255,203,5,.85);border-radius:18px;pointer-events:none}
 .qmsg{position:absolute;inset:0;display:grid;place-items:center;text-align:center;padding:20px;color:var(--muted)}
 .qcam.flash::after{content:"";position:absolute;inset:0;background:#fff;opacity:.55}
+/* scatto automatico: riquadro della carta trovata, anello di attesa, avviso e tasto Auto */
+.qlive{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;filter:drop-shadow(0 0 2px rgba(0,0,0,.9)) drop-shadow(0 0 6px rgba(0,0,0,.5))}
+.qlive polygon{fill:none;stroke:#FFCB2F;stroke-width:4;stroke-linejoin:round}
+.qcam.live .qframe{opacity:.3}
+.qhold{position:absolute;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none;filter:drop-shadow(0 1px 4px rgba(0,0,0,.6))}
+.qhold svg{width:64px;height:64px;transform:rotate(-90deg)}
+.qhold circle{fill:none;stroke-width:5}
+.qhold .bg{stroke:rgba(0,0,0,.45)}
+.qhold .fg{stroke:#FFCB2F;stroke-linecap:round;stroke-dasharray:113.1;transition:stroke-dashoffset .2s linear}
+.qhint{position:absolute;left:50%;bottom:12px;transform:translateX(-50%);max-width:calc(100% - 24px);padding:6px 12px;border-radius:999px;background:rgba(0,0,0,.6);color:#fff;font-size:.82rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;pointer-events:none}
+.qauto{position:absolute;top:10px;right:10px;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.45);background:rgba(0,0,0,.55);color:#fff;font:inherit;font-weight:700;font-size:.8rem}
+.qauto[aria-pressed="true"]{background:#FFCB2F;color:#1C1C1E;border-color:transparent}
 .qbtns{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:16px 0}
 .shutter{flex:none;width:78px;height:78px;border-radius:50%;border:5px solid #fff;background:var(--accent);box-shadow:0 0 0 4px rgba(0,0,0,.45)}
 .shutter:active{transform:scale(.94)}
@@ -932,7 +944,7 @@ textarea.note{font:inherit;font-size:.95rem}
 
 <section id="v-quick" class="view" hidden>
   <div class="cd-top"><button class="rbtn glass" type="button" data-q="back" aria-label="Indietro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="ttl">Scansione rapida</div><div style="width:52px;flex:none"></div></div>
-  <div class="qcam" id="q-cam"><video id="q-video" playsinline muted autoplay></video><div class="qframe"></div><div id="q-msg" class="qmsg" hidden></div></div>
+  <div class="qcam" id="q-cam"><video id="q-video" playsinline muted autoplay></video><div class="qframe"></div><svg id="q-live" class="qlive" hidden aria-hidden="true"><polygon points=""/></svg><div id="q-hold" class="qhold" hidden aria-hidden="true"><svg viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" cx="22" cy="22" r="18" style="stroke-dashoffset:113.1"/></svg></div><div id="q-hint" class="qhint" hidden></div><button id="q-auto" class="qauto" type="button" data-q="auto" aria-pressed="true">Auto</button><div id="q-msg" class="qmsg" hidden></div></div>
   <div class="qbtns"><button class="btn" type="button" data-q="gallery">Galleria</button><button id="q-shot" class="shutter" type="button" data-q="shot" aria-label="Scatta"></button><button class="btn" type="button" data-q="cam">Fotocamera</button></div>
   <input id="q-file" type="file" accept="image/*" multiple hidden>
   <div id="q-stats" class="qstat"></div>
@@ -3841,10 +3853,75 @@ async function startCamera(){
   stopCamera(); const m = $('q-msg'); m.hidden = false; m.textContent = 'Apro la fotocamera…';
   try {
     qStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:3840}, height:{ideal:2160}}, audio:false});
-    const v = $('q-video'); v.srcObject = qStream; await v.play(); m.hidden = true;
+    const v = $('q-video'); v.srcObject = qStream; await v.play(); m.hidden = true; liveStart();
   } catch(e){ m.hidden = false; m.textContent = 'Fotocamera non disponibile' + (e && e.name ? ' (' + e.name + ')' : '') + '. Usa "Galleria" per scegliere più foto.'; qStream = null; }
 }
-function stopCamera(){ if (qStream){ qStream.getTracks().forEach(t => t.stop()); qStream = null; } const v = $('q-video'); if (v) v.srcObject = null; }
+function stopCamera(){ liveStop(); if (qStream){ qStream.getTracks().forEach(t => t.stop()); qStream = null; } const v = $('q-video'); if (v) v.srcObject = null; }
+
+// scatto automatico: ogni AUTO_EVERY ms si cercano i bordi su un fotogramma ridotto; se la carta resta ferma
+// (angoli che si spostano meno di AUTO_STILL) per AUTO_HOLD ms si scatta. Dopo lo scatto si aspetta un'altra carta
+// (carta tolta o spostata molto) prima di scattare di nuovo.
+const AUTO_EVERY = 200, AUTO_HOLD = 1200, AUTO_STILL = 0.025, AUTO_MIN = 0.12;
+const qLive = {timer:null, prev:null, since:0, armed:true, miss:0, last:null};
+const autoOn = () => cfg.autoShot !== false;
+function liveStart(){
+  $('q-auto').setAttribute('aria-pressed', autoOn() ? 'true' : 'false');
+  if (qLive.timer || !autoOn()) return;
+  // armed resta com'era: una carta appena scattata (anche a mano) non si riscatta riaccendendo Auto
+  Object.assign(qLive, {prev:null, since:0, miss:0});
+  liveHint('Inquadra una carta: scatto da solo'); qLive.timer = setInterval(liveTick, AUTO_EVERY);
+}
+function liveStop(){ if (qLive.timer){ clearInterval(qLive.timer); qLive.timer = null; } liveShow(null, 0); liveHint(''); }
+function liveHint(t){ const h = $('q-hint'); if (!h) return; h.hidden = !t; h.textContent = t; }
+const quadMove = (a, b) => Math.max(...a.map((p, i) => Math.hypot(p[0] - b[i][0], p[1] - b[i][1])));
+// riquadro sopra il video (q in coordinate 0-1 del fotogramma; il video riempie il riquadro con object-fit: cover)
+function liveShow(q, prog){
+  const cam = $('q-cam'), svg = $('q-live'), hold = $('q-hold'), v = $('q-video');
+  // sugli elementi SVG "hidden" non è una proprietà: si usa l'attributo
+  if (!q || !v.videoWidth){ svg.setAttribute('hidden', ''); hold.hidden = true; cam.classList.remove('live'); return; }
+  const ew = cam.clientWidth || 300, eh = cam.clientHeight || 400, k = Math.max(ew / v.videoWidth, eh / v.videoHeight);
+  const ox = (ew - v.videoWidth * k) / 2, oy = (eh - v.videoHeight * k) / 2;
+  const pts = q.map(p => [ox + p[0] * v.videoWidth * k, oy + p[1] * v.videoHeight * k]);
+  svg.setAttribute('viewBox', '0 0 ' + ew + ' ' + eh); svg.querySelector('polygon').setAttribute('points', pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' '));
+  svg.removeAttribute('hidden'); cam.classList.add('live');
+  hold.hidden = !(prog > 0);
+  hold.style.left = ((pts[0][0] + pts[2][0]) / 2).toFixed(1) + 'px'; hold.style.top = ((pts[0][1] + pts[2][1]) / 2).toFixed(1) + 'px';
+  hold.querySelector('.fg').style.strokeDashoffset = (113.1 * (1 - Math.min(1, prog))).toFixed(1);
+}
+function liveTick(){
+  const v = $('q-video');
+  if (!qStream || !v.videoWidth || $('v-quick').hidden || !$('qedge').hidden || document.visibilityState === 'hidden') return;
+  const S = Math.min(1, 360 / Math.max(v.videoWidth, v.videoHeight)), w = Math.max(8, Math.round(v.videoWidth * S)), h = Math.max(8, Math.round(v.videoHeight * S));
+  const c = qLive.cv || (qLive.cv = document.createElement('canvas')); if (c.width !== w) c.width = w; if (c.height !== h) c.height = h;
+  let r;
+  try { const g = c.getContext('2d', {willReadFrequently:true}); g.drawImage(v, 0, 0, w, h); r = detectFromPixels(g.getImageData(0, 0, w, h).data, w, h); } catch(e){ return; }
+  const q = r && r.quad ? r.quad.map(p => [p[0] / w, p[1] / h]) : null;
+  const good = !!(q && r.ok && polyArea(q) >= AUTO_MIN);
+  if (!qLive.armed){
+    // dopo uno scatto: si riparte quando la carta non c'è più (3 fotogrammi) o è un'altra, lontana dalla precedente
+    if (!good){ if (++qLive.miss >= 3) qLive.armed = true; }
+    else if (qLive.last && quadMove(q, qLive.last) > 0.15) qLive.armed = true;
+    liveShow(null, 0); if (!qLive.armed) return;
+    liveHint('Inquadra la prossima carta');
+  }
+  if (!good){ qLive.prev = null; if (++qLive.miss >= 2){ liveShow(null, 0); liveHint('Inquadra una carta: scatto da solo'); } return; }
+  qLive.miss = 0;
+  const now = Date.now();
+  if (!qLive.prev || quadMove(q, qLive.prev) > AUTO_STILL) qLive.since = now;
+  qLive.prev = q;
+  const prog = (now - qLive.since) / AUTO_HOLD;
+  liveShow(q, Math.max(0.04, prog)); liveHint('Tieni fermo…');
+  if (prog >= 1){ qShoot(); qLive.last = q; }
+}
+// scatto (dal tasto o automatico): fotogramma intero in coda, poi si aspetta la carta successiva
+function qShoot(){
+  const v = $('q-video'); if (!qStream || !v.videoWidth){ toast('La fotocamera non è pronta'); return; }
+  const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
+  $('q-cam').classList.add('flash'); setTimeout(() => $('q-cam').classList.remove('flash'), 140);
+  Object.assign(qLive, {armed:false, miss:0, prev:null, last:qLive.prev}); liveShow(null, 0);
+  if (qLive.timer) liveHint('Scattata! Metti la prossima carta');
+  qEnqueue(c);
+}
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') stopCamera(); else if (!$('v-quick').hidden && !qStream && window.__qcam) startCamera(); });
 
 // ritaglio immediato: in coda resta solo la carta ritagliata (leggera), non la foto intera
@@ -4069,11 +4146,8 @@ $('v-quick').addEventListener('click', ev => {
   const b = ev.target.closest('[data-q]'); if (!b) return;
   const a = b.dataset.q, job = b.dataset.id ? qJobs.find(j => j.id === b.dataset.id) : null;
   if (a === 'back') popView();
-  else if (a === 'shot'){
-    const v = $('q-video'); if (!qStream || !v.videoWidth){ toast('La fotocamera non è pronta'); return; }
-    const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
-    $('q-cam').classList.add('flash'); setTimeout(() => $('q-cam').classList.remove('flash'), 140); qEnqueue(c);
-  }
+  else if (a === 'shot') qShoot();
+  else if (a === 'auto'){ cfg.autoShot = !autoOn(); LS.set('pkm_cfg', cfg); if (autoOn()){ if (qStream) liveStart(); else $('q-auto').setAttribute('aria-pressed', 'true'); toast('Scatto automatico attivo'); } else { liveStop(); $('q-auto').setAttribute('aria-pressed', 'false'); toast('Scatto automatico spento: usa il pulsante giallo'); } }
   else if (a === 'gallery') $('q-file').click();
   else if (a === 'cam'){ window.__qcam = true; startCamera(); }
   else if (a === 'resume') resumeQueue();
