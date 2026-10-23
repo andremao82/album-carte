@@ -2128,6 +2128,12 @@ function fromTcgdex(c, lang){
    Ordine: TCGdex forte > Pokémon TCG API forte > TCGdex debole > Pokémon TCG API debole.
    Caso: Venusaur 30/165 di Expedition non deve diventare la carta 30 di Scarlatto e Violetto 151. */
 const normName = v => String(v || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+// "Charizard ex" → ["Charizard-ex", "Charizard"]; "Charizard VSTAR" → ["Charizard V ASTRO", "Charizard"] (nome italiano); nomi senza suffisso → []
+function tdNameVariants(name){
+  const m = String(name || '').trim().match(/^(.*\S)[\s-]+(ex|gx|v|vmax|vstar|v-union|break)$/i);
+  if (!m) return [];
+  return [/^vstar$/i.test(m[2]) ? m[1] + ' V ASTRO' : m[1] + '-' + m[2], m[1]];
+}
 async function searchTcgdexRanked(name, num, tot, lang){
   const lg = lang || 'it', sameNum = lid => normNum(String(lid)) === normNum(String(num)), nn = normName(name);
   let ids = [], weakIds = [];
@@ -2140,7 +2146,17 @@ async function searchTcgdexRanked(name, num, tot, lang){
     if (!name || byName.length) ids = (name ? byName : hits).map(h => h.id); else weakIds = hits.map(h => h.id);
   }
   if (!ids.length && name){
-    const list = await tdGet(lg + '/cards?name=' + encodeURIComponent(name));
+    let list = await tdGet(lg + '/cards?name=' + encodeURIComponent(name));
+    // TCGdex in italiano scrive "Charizard-ex", "Pikachu-V": con lo spazio la ricerca per nome non le trova.
+    // Si riprova col trattino e, se serve, col solo nome del Pokémon; si tengono le carte con lo stesso nome (spazi e trattini a parte).
+    const alts = tdNameVariants(name), hasNum = l => Array.isArray(l) && l.some(c => sameNum(c.localId));
+    const okNames = new Set([nn].concat(alts.slice(0, 1).map(normName)));
+    for (let i = 0; i < alts.length && (num ? !hasNum(list) : i === 0); i++){
+      const l2 = await tdGet(lg + '/cards?name=' + encodeURIComponent(alts[i])).catch(() => null);
+      if (!Array.isArray(l2)) continue;
+      const same = l2.filter(c => okNames.has(normName(c.name))), seen = new Set(same.map(c => c.id));
+      list = same.concat((Array.isArray(list) ? list : []).filter(c => !seen.has(c.id)));
+    }
     if (Array.isArray(list)){
       const f = num ? list.filter(c => sameNum(c.localId)) : list;
       if (f.length) ids = f.slice(0, 8).map(c => c.id); else if (!weakIds.length) weakIds = list.slice(0, 8).map(c => c.id);
