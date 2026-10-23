@@ -1,5 +1,5 @@
 // Scatto automatico (23/10/2026): fotocamera finta con una carta ferma su muro chiaro; immagini in .work/shot/
-// scatto1.png (riquadro e anello a metà) e scatto2.png (dopo lo scatto). Uso: node screenshot/shot_scatto.js [dark|light]
+// scatto1.png (riquadro e anello a metà) e scatto2.png (spunta subito dopo lo scatto). Uso: node screenshot/shot_scatto.js [dark|light]
 const path=require('path'), fs=require('fs');
 const OUT=path.resolve(__dirname,'../.work/shot')+'/'; fs.mkdirSync(OUT,{recursive:true});
 const {launch}=require('./browser'); const theme=process.argv[2]||'dark';
@@ -30,6 +30,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
   await page.evaluate(()=>{ window.__scena.card='a'; });
   for(let i=0;i<60;i++){ await wait(40); if(await page.evaluate(()=>!document.getElementById('q-hold').hidden)) break; } await wait(350);
   await page.screenshot({path:OUT+'scatto1.png'});
-  await wait(1500); await page.screenshot({path:OUT+'scatto2.png'});
+  for(let i=0;i<60;i++){ await wait(40); if(await page.evaluate(()=>document.getElementById('q-hold').classList.contains('done'))) break; } await wait(450);
+  await page.screenshot({path:OUT+'scatto2.png'});
   await browser.close(); console.log('ok',OUT+'scatto1.png',OUT+'scatto2.png');
 }catch(e){ console.log('non disponibile:',String(e.message).slice(0,400)); } })();

@@ -1,6 +1,8 @@
 // 23/10/2026: Scansione rapida con scatto automatico. Chromium vero, fotocamera finta (canvas.captureStream) che mostra
 // una scena disegnata: muro vuoto, poi una carta ferma (riquadro, anello di attesa, scatto da solo), carta che resta
 // (nessun secondo scatto), carta tolta e un'altra (secondo scatto), carta che si muove (niente scatto), tasto Auto spento.
+// Dal 23/10 sera: anello che avanza in modo continuo (campionato a ogni fotogramma), riquadro che scivola senza salti,
+// spunta per 1 secondo dopo lo scatto e poi "Inquadra la prossima carta".
 // Verifiche vere: il test si ferma al primo errore.
 const {launch}=require(require('./percorsi').SHOT+'/browser.js');
 const P=require('./percorsi');
@@ -34,7 +36,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     await page.evaluate(()=>{ document.getElementById('fab').click(); document.querySelector('[data-ad="quick"]').click(); });
     const rows=()=>page.evaluate(()=>document.querySelectorAll('#q-list .qrow').length);
     const st=()=>page.evaluate(()=>({hint:document.getElementById('q-hint').hidden?'':document.getElementById('q-hint').textContent,live:(()=>{ const e=document.getElementById('q-live'), r=e.getBoundingClientRect(); return !e.hasAttribute('hidden')&&getComputedStyle(e).display!=='none'&&r.width>50; })(),hold:!document.getElementById('q-hold').hidden,
-      off:+getComputedStyle(document.querySelector('#q-hold .fg')).strokeDashoffset.replace('px',''),auto:document.getElementById('q-auto').getAttribute('aria-pressed')}));
+      off:+getComputedStyle(document.querySelector('#q-hold .fg')).strokeDashoffset.replace('px',''),done:document.getElementById('q-hold').classList.contains('done'),okOp:+getComputedStyle(document.querySelector('#q-hold .ok')).opacity,auto:document.getElementById('q-auto').getAttribute('aria-pressed')}));
     let ready=false; for(let i=0;i<40&&!ready;i++){ await wait(100); ready=await page.evaluate(()=>document.getElementById('q-video').videoWidth>0); }
     ok(ready,'fotocamera (finta) accesa');
     console.log('1 muro vuoto: nessuno scatto');
@@ -46,10 +48,23 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     let seen=null; for(let i=0;i<20&&!seen;i++){ await wait(100); const y=await st(); if(y.hold) seen=y; }
     ok(seen&&seen.live,'riquadro giallo sulla carta trovata'); ok(/Tieni fermo/.test(seen.hint),'avviso "Tieni fermo…"');
     await wait(400); const mid=await st(); ok(mid.hold&&mid.off<seen.off,'l\'anello avanza ('+seen.off.toFixed(0)+' → '+mid.off.toFixed(0)+')');
+    // anello e riquadro campionati a ogni fotogramma dello schermo (per 600 ms): avanzamento senza gradini, riquadro senza salti
+    const samp=await page.evaluate(()=>new Promise(res=>{ const out=[], t0=performance.now(), fg=document.querySelector('#q-hold .fg'), pg=document.querySelector('#q-live polygon');
+      const f=()=>{ out.push({t:performance.now()-t0,off:parseFloat(fg.style.strokeDashoffset),pts:pg.getAttribute('points')}); if(performance.now()-t0<600) requestAnimationFrame(f); else res(out); }; requestAnimationFrame(f); }));
+    const offs=samp.map(s=>s.off).filter(v=>!isNaN(v)), distinct=new Set(offs.map(v=>v.toFixed(1))).size;
+    ok(samp.length>=20,'campioni a ogni fotogramma: '+samp.length);
+    ok(distinct>=samp.length*0.6,'l\'anello cambia quasi a ogni fotogramma ('+distinct+' valori diversi su '+samp.length+'), non a scatti ogni ricerca');
+    const steps=offs.slice(1).map((v,i)=>offs[i]-v), maxStep=Math.max(...steps);
+    ok(steps.every(d=>d>=-0.01)&&maxStep<8,'l\'anello avanza sempre, con passi piccoli (massimo '+maxStep.toFixed(1)+' su 113)');
+    const PT=s=>s.pts.split(' ').map(p=>p.split(',').map(Number)), jumps=samp.slice(1).map((s,i)=>Math.max(...PT(s).map((p,j)=>Math.hypot(p[0]-PT(samp[i])[j][0],p[1]-PT(samp[i])[j][1]))));
+    ok(Math.max(...jumps)<6,'il riquadro non salta (spostamento massimo fra due fotogrammi '+Math.max(...jumps).toFixed(1)+' px)');
     ok(await rows()===0,'non scatta prima del tempo di attesa');
     let shot=false; for(let i=0;i<25&&!shot;i++){ await wait(100); shot=(await rows())===1; }
     ok(shot,'scattata da sola dopo circa 1,2 s di carta ferma');
-    x=await st(); ok(/Scattata|prossima/.test(x.hint),'avviso dopo lo scatto: '+x.hint); ok(!x.hold,'anello nascosto dopo lo scatto');
+    x=await st(); ok(x.hold&&x.done,'subito dopo lo scatto l\'anello diventa la spunta'); ok(/Scattata/.test(x.hint),'avviso: '+x.hint);
+    await wait(450); x=await st(); ok(x.hold&&x.done&&x.okOp===1,'spunta ancora visibile dopo mezzo secondo');
+    let gone=false; for(let i=0;i<15&&!gone;i++){ await wait(100); x=await st(); gone=!x.hold; }
+    ok(gone,'dopo circa 1 secondo la spunta sparisce'); ok(/prossima carta/.test(x.hint),'poi: '+x.hint);
 
     console.log('3 la stessa carta resta: nessun secondo scatto');
     await wait(2500); ok(await rows()===1,'una sola foto finché la carta non cambia');
@@ -80,6 +95,18 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     await page.evaluate(()=>document.getElementById('q-auto').click()); await wait(200);
     x=await st(); ok(x.auto==='true','Auto riacceso');
     await wait(2500); ok(await rows()===4,'riacceso con la carta già scattata a mano: non la riscatta');
+    console.log('7 carta che scorre a scatti nel video: il riquadro la segue senza saltare');
+    await page.evaluate(()=>{ window.__scena.card=null; }); await wait(800);
+    await page.evaluate(()=>{ window.__scena.card='a'; window.__scena.dx=-120; window.__slide=setInterval(()=>{ window.__scena.dx=Math.min(120,window.__scena.dx+30); },150); });
+    let on=false; for(let i=0;i<30&&!on;i++){ await wait(50); on=(await st()).live; }
+    ok(on,'riquadro sulla carta che si muove');
+    const sl=await page.evaluate(()=>new Promise(res=>{ const out=[], t0=performance.now(), pg=document.querySelector('#q-live polygon');
+      const f=()=>{ const v=pg.getAttribute('points'); if(v) out.push(v.split(' ').map(p=>p.split(',').map(Number))); if(performance.now()-t0<700) requestAnimationFrame(f); else res(out); }; requestAnimationFrame(f); }));
+    await page.evaluate(()=>clearInterval(window.__slide));
+    const jm=sl.slice(1).map((q,i)=>Math.max(...q.map((p,j)=>Math.hypot(p[0]-sl[i][j][0],p[1]-sl[i][j][1])))), tot=Math.hypot(sl[sl.length-1][0][0]-sl[0][0][0],sl[sl.length-1][0][1]-sl[0][0][1]);
+    // la scena salta di 30 px del video (~15 px a schermo) ogni 150 ms: il riquadro deve muoversi a piccoli passi
+    ok(tot>25,'il riquadro segue la carta ('+tot.toFixed(0)+' px)');
+    ok(Math.max(...jm)<9,'passo massimo fra due fotogrammi '+Math.max(...jm).toFixed(1)+' px (la scena salta di ~15 px)');
     ok(!errs.length,'nessun errore nella pagina '+errs.join(' | '));
     console.log('scatto_auto: '+checks+' controlli superati, errori: nessuno');
     await browser.close(); process.exit(0);
