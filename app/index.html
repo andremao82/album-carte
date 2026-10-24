@@ -208,7 +208,6 @@ textarea.note{width:100%;min-height:84px;padding:14px 18px;border-radius:18px;bo
 /* ---- Filtri ---- */
 .fbar{display:flex;align-items:center;gap:12px;margin:-2px 0 12px}
 .fbar .muted{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-#fpanel{margin:0 0 14px}
 
 /* ---- Avanzamento e Pokédex ---- */
 .dtop{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
@@ -713,7 +712,6 @@ textarea.note{font:inherit;font-size:.95rem}
 .erow .er b{font-size:1rem}
 .erow .er span{font-size:.75rem;color:var(--muted)}
 .cfoot{text-align:center;margin:10px 0 0}
-#fpanel{margin:-4px 0 12px}
 /* scheda carta */
 .cd-top .rbtn .fill{fill:currentColor;stroke:none}
 .cd-stage{padding:10px 0 0}
@@ -938,11 +936,6 @@ textarea.note{font:inherit;font-size:.95rem}
     </div>
   </div>
   <div id="c-chips" class="pbrow scroll" role="group" aria-label="Filtri"></div>
-  <div id="fpanel" class="panel" hidden>
-    <div class="row"><div class="field"><label for="cf-var">Variante</label><select id="cf-var"></select></div>
-      <div class="field"><label for="cf-cond">Condizione</label><select id="cf-cond"></select></div></div>
-    <button id="cf-manual" class="pb" type="button" aria-pressed="false">Solo con il mio prezzo</button>
-  </div>
   <div id="list"></div>
   <p id="c-foot" class="cap cfoot"></p>
 </section>
@@ -1426,6 +1419,8 @@ function applyPrices(e, c){
   const pr = pricesOf(c); if (pr) e.pr = pr;
   if (Array.isArray(c.dex)) e.dex = c.dex;
   if (c.cat !== undefined){ e.cat = c.cat; e.tt = c.tt || ''; e.ill = c.ill || ''; }
+  if (Array.isArray(c.types)) e.types = normTypes(c.types);
+  if (!e.rarity && c.rarity) e.rarity = c.rarity;
   const v = priceFor(c, e.variant); if (v != null){ e.price = v; e.priceT = Date.now(); recordPrice(e); }
 }
 
@@ -1440,7 +1435,7 @@ function go(name, keepStack){
   closeAdd();
   updateScanBadge(); if (name === 'scan') renderScanQueue();
   if (name === 'home') renderHome();
-  if (name === 'cat') renderCatalog();
+  if (name === 'cat'){ renderCatalog(); readTypesSoon(); }
   if (name === 'set') renderSettings();
   if (name === 'sets') openSetsTab();
   if (name === 'dex'){ renderDex(); backfillDex(); loadDexNamesAndRefresh(); }
@@ -2131,7 +2126,7 @@ function fromTcgdex(c, lang){
   const pm = c.pricing && c.pricing.cardmarket;
   const nz = v => (typeof v === 'number' ? v : null);
   return {
-    id:'tcgdex:' + lang + ':' + c.id, src:'tcgdex', srcId:c.id, srcLang:lang, setId:(c.set && c.set.id) || '', dex:Array.isArray(c.dexId) ? c.dexId : [], cat:normCat(c.category), tt:c.trainerType || '', ill:c.illustrator || '',
+    id:'tcgdex:' + lang + ':' + c.id, src:'tcgdex', srcId:c.id, srcLang:lang, setId:(c.set && c.set.id) || '', dex:Array.isArray(c.dexId) ? c.dexId : [], cat:normCat(c.category), tt:c.trainerType || '', ill:c.illustrator || '', ...(Array.isArray(c.types) || c.category ? {types:normTypes(c.types)} : {}),
     name:c.name || '?', number:String(c.localId == null ? '' : c.localId), rarity:c.rarity || '',
     set:{name:(c.set && c.set.name) || '', printedTotal:(c.set && c.set.cardCount && c.set.cardCount.official) || ''},
     images:{small: c.image ? c.image + '/low.webp' : ''},
@@ -2306,7 +2301,7 @@ function addEntryFromCandidate(c, lang, variant, cond, qty, pm, extra){
   if (ex){ ex.qty += qty; if (pm != null) ex.priceManual = pm; applyPrices(ex, c); }
   else catalog.push({key, cardId:c.id, name:c.name, setName:c.set.name, number:c.number, total:c.set.printedTotal,
     img:(c.images && c.images.small) || '', lang, variant, cond, qty, price:priceFor(c, variant), pr:pricesOf(c), priceT:Date.now(), rarity:c.rarity || '', priceManual:pm, added:Date.now(),
-    ...(c.src === 'tcgdex' ? {src:c.src, srcId:c.srcId, srcLang:c.srcLang, setId:c.setId || ''} : {}), ...(Array.isArray(c.dex) ? {dex:c.dex} : {}), ...(c.cat !== undefined ? {cat:c.cat, tt:c.tt || '', ill:c.ill || ''} : {}), ...(extra || {})});
+    ...(c.src === 'tcgdex' ? {src:c.src, srcId:c.srcId, srcLang:c.srcLang, setId:c.setId || ''} : {}), ...(Array.isArray(c.dex) ? {dex:c.dex} : {}), ...(c.cat !== undefined ? {cat:c.cat, tt:c.tt || '', ill:c.ill || ''} : {}), ...(Array.isArray(c.types) ? {types:normTypes(c.types)} : {}), ...(extra || {})});
   const ne = catalog.find(x => x.key === key); if (ne) recordPrice(ne);
   save(); if (ne && needsImage(ne)) setTimeout(fillMissingImages, 0); return key;
 }
@@ -2692,11 +2687,13 @@ function renderCatalog(){
     return '<button class="item erow' + (on ? ' picked' : '') + '" type="button" data-open="' + esc(e.key) + '">' + entryRow(e, chk) + '</button>';
   }).join('');
 }
-/* filtri: Lingua e Set a menu, Doppioni e Senza prezzo (come la nativa); variante, condizione e prezzo mio in "Altri filtri" */
-const cf = {lang:'', set:'', dup:false, noprice:false, variant:'', cond:'', manual:false};
+/* filtri tutti nella fila di pillole: Lingua, Set, Tipo, Rarità, Variante e Condizione a menu; Doppioni, Senza prezzo e Prezzo mio da accendere */
+const cf = {lang:'', set:'', type:'', rar:'', dup:false, noprice:false, variant:'', cond:'', manual:false};
 function passesFilters(e){
   if (cf.lang && e.lang !== cf.lang) return false;
   if (cf.set && groupKey(e) !== cf.set) return false;
+  if (cf.type && !(typeKeys(e) || []).includes(cf.type)) return false;
+  if (cf.rar && rarityName(e.rarity) !== cf.rar) return false;
   if (cf.dup && !(e.qty > 1)) return false;
   if (cf.noprice && unit(e) != null) return false;
   if (cf.variant && e.variant !== cf.variant) return false;
@@ -2704,45 +2701,46 @@ function passesFilters(e){
   if (cf.manual && e.priceManual == null) return false;
   return true;
 }
-const anyFilter = () => !!(cf.lang || cf.set || cf.dup || cf.noprice || cf.variant || cf.cond || cf.manual);
-function clearFilters(){ Object.assign(cf, {lang:'', set:'', dup:false, noprice:false, variant:'', cond:'', manual:false}); }
+const anyFilter = () => !!(cf.lang || cf.set || cf.type || cf.rar || cf.dup || cf.noprice || cf.variant || cf.cond || cf.manual);
+function clearFilters(){ Object.assign(cf, {lang:'', set:'', type:'', rar:'', dup:false, noprice:false, variant:'', cond:'', manual:false}); }
 function fillFilters(){
   const names = new Map(); for (const e of catalog){ const k = groupKey(e); if (!names.has(k)) names.set(k, (e.setName || 'Set') + (e.srcLang ? ' · ' + (LANGMAP[e.srcLang] || '') : '')); }
   const langs = LANGS.filter(l => catalog.some(e => e.lang === l));
   if (cf.lang && !langs.includes(cf.lang)) cf.lang = '';
   if (cf.set && !names.has(cf.set)) cf.set = '';
   const sets = [...names.keys()].sort((a, b) => names.get(a).localeCompare(names.get(b)));
-  const more = !!(cf.variant || cf.cond || cf.manual);
+  const by = fn => { const m = new Map(); for (const e of catalog) for (const k of [].concat(fn(e) || [])){ if (k) m.set(k, (m.get(k) || 0) + e.qty); } return m; };
+  const T = by(typeKeys), Rr = by(e => rarityName(e.rarity)), V = by(e => e.variant), C = by(e => e.cond);
+  const unread = catalog.filter(e => !typeKeys(e)).length;
+  if (cf.type && !T.has(cf.type)) cf.type = '';
+  if (cf.rar && !Rr.has(cf.rar)) cf.rar = '';
+  if (cf.variant && !V.has(cf.variant)) cf.variant = '';
+  if (cf.cond && !C.has(cf.cond)) cf.cond = '';
+  const condName = k => { const c = CONDS.find(x => x[0] === k); return c ? c[0] + ' – ' + c[1] : k; };
+  const menu = (id, label, cur, all, m, order, nameOf) => '<span class="pb menu" aria-pressed="' + !!cur + '"><span>' + esc(cur || label) + '</span><select id="' + id + '" aria-label="' + label + '">' +
+    optHtml(all, m, nameOf || (k => k), cur, order) + (id === 'cf-type' && unread ? '<option disabled>' + unread + (unread === 1 ? ' carta' : ' carte') + ' ancora da leggere</option>' : '') + '</select></span>';
   $('c-chips').innerHTML = '<button class="pb" type="button" data-qf="all" aria-pressed="' + !anyFilter() + '">Tutte</button>' +
     '<span class="pb menu" aria-pressed="' + !!cf.lang + '"><span>' + esc(cf.lang ? LANGN[cf.lang] || cf.lang : 'Lingua') + '</span><select id="cf-lang" aria-label="Lingua"><option value="">Tutte le lingue</option>' + langs.map(l => '<option value="' + l + '"' + (cf.lang === l ? ' selected' : '') + '>' + esc(LANGN[l] || l) + '</option>').join('') + '</select></span>' +
     '<span class="pb menu" aria-pressed="' + !!cf.set + '"><span>' + esc(cf.set ? names.get(cf.set) : 'Set') + '</span><select id="cf-set" aria-label="Set"><option value="">Tutti i set</option>' + sets.map(k => '<option value="' + esc(k) + '"' + (cf.set === k ? ' selected' : '') + '>' + esc(names.get(k)) + '</option>').join('') + '</select></span>' +
+    menu('cf-type', 'Tipo', cf.type, 'Tutti i tipi', T, TYPE_ORDER) + menu('cf-rar', 'Rarità', cf.rar, 'Tutte le rarità', Rr, RAR_ORDER) +
+    menu('cf-var', 'Variante', cf.variant, 'Tutte le varianti', V, VARS) + menu('cf-cond', 'Condizione', cf.cond, 'Tutte le condizioni', C, CONDS.map(c => c[0]), condName) +
     '<button class="pb" type="button" data-qf="dup" aria-pressed="' + cf.dup + '">Doppioni</button>' +
     '<button class="pb" type="button" data-qf="noprice" aria-pressed="' + cf.noprice + '">Senza prezzo</button>' +
-    '<button class="pb" type="button" data-qf="more" aria-pressed="' + more + '" aria-expanded="' + !$('fpanel').hidden + '">Altri filtri</button>';
-  const by = fn => { const m = new Map(); for (const e of catalog){ const k = fn(e); m.set(k, (m.get(k) || 0) + e.qty); } return m; };
-  const V = by(e => e.variant), C = by(e => e.cond);
-  if (cf.variant && !V.has(cf.variant)) cf.variant = '';
-  if (cf.cond && !C.has(cf.cond)) cf.cond = '';
-  $('cf-var').innerHTML = optHtml('Tutte', V, k => k, cf.variant, VARS);
-  $('cf-cond').innerHTML = optHtml('Tutte', C, k => { const c = CONDS.find(x => x[0] === k); return c ? c[0] + ' – ' + c[1] : k; }, cf.cond, CONDS.map(c => c[0]));
-  $('cf-manual').setAttribute('aria-pressed', String(cf.manual));
+    '<button class="pb" type="button" data-qf="manual" aria-pressed="' + cf.manual + '">Prezzo mio</button>';
 }
+const sortKeys = (m, nameOf, order) => [...m.keys()].sort((a, b) => order ? (order.indexOf(a) < 0 ? 99 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 99 : order.indexOf(b)) || String(a).localeCompare(String(b)) : String(nameOf(a)).localeCompare(String(nameOf(b))));
 function optHtml(label, m, nameOf, cur, order){
-  const keys = [...m.keys()].sort((a, b) => order ? (order.indexOf(a) < 0 ? 99 : order.indexOf(a)) - (order.indexOf(b) < 0 ? 99 : order.indexOf(b)) || String(a).localeCompare(String(b)) : String(nameOf(a)).localeCompare(String(nameOf(b))));
+  const keys = sortKeys(m, nameOf, order);
   return '<option value="">' + label + '</option>' + keys.map(k => '<option value="' + esc(k) + '"' + (k === cur ? ' selected' : '') + '>' + esc(nameOf(k)) + ' (' + m.get(k) + ')</option>').join('');
 }
 $('c-chips').addEventListener('click', ev => {
   const b = ev.target.closest('[data-qf]'); if (!b) return;
   const v = b.dataset.qf;
-  if (v === 'all'){ clearFilters(); $('fpanel').hidden = true; }
-  else if (v === 'more') $('fpanel').hidden = !$('fpanel').hidden;
+  if (v === 'all') clearFilters();
   else cf[v] = !cf[v];
   renderCatalog();
 });
-$('c-chips').addEventListener('change', ev => { const t = ev.target; if (t.id === 'cf-lang') cf.lang = t.value; else if (t.id === 'cf-set') cf.set = t.value; else return; renderCatalog(); });
-$('cf-var').addEventListener('change', () => { cf.variant = $('cf-var').value; renderCatalog(); });
-$('cf-cond').addEventListener('change', () => { cf.cond = $('cf-cond').value; renderCatalog(); });
-$('cf-manual').addEventListener('click', () => { cf.manual = !cf.manual; renderCatalog(); });
+$('c-chips').addEventListener('change', ev => { const t = ev.target; if (t.id === 'cf-lang') cf.lang = t.value; else if (t.id === 'cf-set') cf.set = t.value; else if (t.id === 'cf-type') cf.type = t.value; else if (t.id === 'cf-rar') cf.rar = t.value; else if (t.id === 'cf-var') cf.variant = t.value; else if (t.id === 'cf-cond') cf.cond = t.value; else return; renderCatalog(); });
 $('c-q').addEventListener('input', renderCatalog);
 $('c-qx').addEventListener('click', () => { $('c-q').value = ''; renderCatalog(); $('c-q').focus(); });
 $('c-sort').addEventListener('change', () => { cfg.albumSort = $('c-sort').value; LS.set('pkm_cfg', cfg); renderCatalog(); });
@@ -2807,7 +2805,7 @@ function renderCard(){
     (note ? '<p class="cd-note">' + esc(note) + '</p>' : '') +
     '<div class="cd-ph"><button class="pbtn" type="button" data-a="photo">' + ICON_CAMERA + (photoExists(e.photo) ? 'Foto' : 'Aggiungi foto') + '</button></div>' +
     '<div class="cd-name">' + esc(e.name) + '</div><div class="cd-set">' + esc(setLine(e.setName, e.number, e.total)) + '</div>' +
-    (e.rarity ? '<div class="cd-rar"><span class="chip2 p">' + esc(e.rarity) + '</span></div>' : '') +
+    (rarityName(e.rarity) ? '<div class="cd-rar"><span class="chip2 p">' + esc(rarityName(e.rarity)) + '</span></div>' : '') +
     '<div class="cd-price">' + (u != null ? '<div class="v">' + eur(u) + '</div>' + (e.qty > 1 ? '<div class="q">×' + e.qty + ' = ' + eur(u * e.qty) + '</div>' : '') : '<div class="none">Senza prezzo</div>') +
       '<div class="cap">' + esc(sourceLine(e, info)) + '</div></div>' +
     lbl2('Lingua', LANGN[e.lang] || e.lang) + '<div class="lp" role="group" aria-label="Lingua">' + LANGS.map(l => '<button type="button" data-ed="lang" data-v="' + l + '" aria-pressed="' + (e.lang === l) + '" aria-label="' + esc(LANGN[l] || l) + '">' + esc(l) + '</button>').join('') + '</div>' +
@@ -3032,7 +3030,7 @@ async function refreshOne(e){
   try {
     let c = null;
     if (e.src === 'tcgdex'){ const d = await tdGet(e.srcLang + '/cards/' + encodeURIComponent(e.srcId)); c = d && fromTcgdex(d, e.srcLang); }
-    else { const r = await tcgGet('id:"' + e.cardId + '"', {pageSize:'1', select:'id,cardmarket,tcgplayer,nationalPokedexNumbers,supertype,artist,subtypes'}, 2, 15000); c = r[0] && Object.assign(r[0], ptcgExtra(r[0])); }
+    else { const r = await tcgGet('id:"' + e.cardId + '"', {pageSize:'1', select:'id,cardmarket,tcgplayer,nationalPokedexNumbers,supertype,artist,subtypes,types'}, 2, 15000); c = r[0] && Object.assign(r[0], ptcgExtra(r[0])); }
     if (!c) throw new Error('Carta non trovata nel catalogo prezzi');
     if (!pricesOf(c)) throw new Error('Nessun prezzo disponibile per questa carta');
     applyPrices(e, c); save(); renderCard(); toast('Prezzo aggiornato');
@@ -3623,8 +3621,21 @@ const fmtPct = p => p > 0 && p < 0.01 ? '<0,01' : p > 0 && p < 0.1 ? p.toFixed(2
 const dexName = n => (dexNames && dexNames[n - 1]) || '';
 const dexLang = () => cfg.dexLang || 'it';
 // categoria della carta, anche se il catalogo la restituisce tradotta
+// tipi delle carte in italiano (TCGdex in italiano li dà già così; inglese e giapponese in inglese)
+const TYPE_IT = {grass:'Erba', fire:'Fuoco', water:'Acqua', lightning:'Lampo', psychic:'Psico', fighting:'Lotta', darkness:'Oscurità', metal:'Metallo', fairy:'Folletto', dragon:'Drago', colorless:'Incolore'};
+const TYPE_ORDER = ['Erba', 'Fuoco', 'Acqua', 'Lampo', 'Psico', 'Lotta', 'Oscurità', 'Metallo', 'Folletto', 'Drago', 'Incolore', 'Allenatore', 'Energia'];
+const normTypes = a => [...new Set((Array.isArray(a) ? a : []).map(t => TYPE_IT[String(t).toLowerCase()] || String(t)).filter(Boolean))];
+// tipo per il filtro: Allenatori ed Energie come voce a parte; null = non ancora letto
+const typeKeys = e => e.cat === 'Trainer' ? ['Allenatore'] : e.cat === 'Energy' ? ['Energia'] : Array.isArray(e.types) ? e.types : null;
+// rarità: quelle inglesi (Pokémon TCG API, TCGdex inglese) con il nome italiano di TCGdex
+const RAR_IT = {'common':'Comune', 'uncommon':'Non comune', 'rare':'Rara', 'rare holo':'Olografica Rara', 'holo rare':'Olografica Rara', 'rare holo v':'Olografica Rara V', 'holo rare v':'Olografica Rara V',
+  'rare holo vmax':'Olografica Rara VMAX', 'holo rare vmax':'Olografica Rara VMAX', 'rare holo vstar':'Olografica Rara VSTAR', 'holo rare vstar':'Olografica Rara VSTAR', 'double rare':'Rara doppia',
+  'ultra rare':'Ultrarara', 'rare ultra':'Ultrarara', 'illustration rare':'Rara illustrazione', 'special illustration rare':'Rara illustrazione speciale', 'hyper rare':'Rara iper', 'rare rainbow':'Rara iper',
+  'secret rare':'Segreto rara', 'rare secret':'Segreto rara', 'ace spec rare':'Rara Asso tattico', 'rara asso tattico':'Rara Asso tattico', 'shiny rare':'Rara Lucente', 'rare shiny':'Rara Lucente', 'radiant rare':'Rara radiosa', 'promo':'Promo'};
+const rarityName = r => { const t = String(r || '').trim(); if (!t || /^(none|nessuna)$/i.test(t)) return ''; return RAR_IT[t.toLowerCase()] || t; };
+const RAR_ORDER = ['Comune', 'Non comune', 'Rara', 'Olografica Rara', 'Olografica Rara V', 'Olografica Rara VMAX', 'Olografica Rara VSTAR', 'Rara doppia', 'Ultrarara', 'Rara illustrazione', 'Rara illustrazione speciale', 'Rara iper', 'Segreto rara', 'Rara Asso tattico', 'Rara Lucente', 'Promo'];
 const normCat = s => { const t = String(s || '').toLowerCase(); if (!t) return ''; if (/allenator|trainer|dresseur|entrenador|treinador/.test(t)) return 'Trainer'; if (/energ/.test(t)) return 'Energy'; return 'Pokemon'; };
-const ptcgExtra = c => { const cat = normCat(c.supertype); return {tcg:mapTcgKeys(c.tcgplayer && c.tcgplayer.prices, r => numPos(r.market) != null ? numPos(r.market) : numPos(r.mid)), dex:c.nationalPokedexNumbers || [], cat, tt:cat === 'Trainer' ? ((c.subtypes && c.subtypes[0]) || '') : '', ill:c.artist || ''}; };
+const ptcgExtra = c => { const cat = normCat(c.supertype); return {...(Array.isArray(c.types) || c.supertype ? {types:normTypes(c.types)} : {}), tcg:mapTcgKeys(c.tcgplayer && c.tcgplayer.prices, r => numPos(r.market) != null ? numPos(r.market) : numPos(r.mid)), dex:c.nationalPokedexNumbers || [], cat, tt:cat === 'Trainer' ? ((c.subtypes && c.subtypes[0]) || '') : '', ill:c.artist || ''}; };
 const pendingDex = () => catalog.filter(e => !Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined).length;
 const ownedKey = e => e.srcId || e.cardId;
 const ownedDistinct = list => new Set(list.map(ownedKey)).size;
@@ -3702,10 +3713,18 @@ async function ensureDexTotals(nums){
   };
   await Promise.all(Array.from({length:Math.min(4, todo.length)}, worker));
 }
-// legge dalle carte, una sola volta, Pokémon, categoria, tipo di Allenatore e artista
+let typesTry = 0;
+function readTypesSoon(){
+  if (dexFill.running || navigator.onLine === false || Date.now() - typesTry < 600000) return;
+  if (!catalog.some(e => !Array.isArray(e.types))) return;
+  typesTry = Date.now(); backfillDex();
+}
+// legge dalle carte, una sola volta, Pokémon, categoria, tipo (Erba, Acqua…), tipo di Allenatore e artista
 async function backfillDex(){
   if (dexFill.running) return;
-  const need = catalog.filter(e => !Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined); if (!need.length) return;
+  const need = catalog.filter(e => !Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined || !Array.isArray(e.types)); if (!need.length) return;
+  // carte già collegate al Pokédex: si aggiunge solo il tipo, il resto non si tocca
+  const onlyTypes = e => Array.isArray(e.dex) && e.cat !== undefined && e.ill !== undefined;
   dexFill.running = true; dexFill.done = 0; dexFill.total = need.length;
   let lastSave = 0;
   const bump = n => { dexFill.done += n; if (dexFill.done - lastSave >= 25){ lastSave = dexFill.done; save(); } renderDexNote(); };
@@ -3720,8 +3739,8 @@ async function backfillDex(){
         const k = queue.shift(), i = k.indexOf('/');
         try {
           const d = await tdGet(k.slice(0, i) + '/cards/' + encodeURIComponent(k.slice(i + 1)));
-          const info = d ? {dex:Array.isArray(d.dexId) ? d.dexId : [], cat:normCat(d.category), tt:d.trainerType || '', ill:d.illustrator || ''} : {dex:[], cat:'', tt:'', ill:''};
-          for (const e of td.get(k)) Object.assign(e, info);
+          const info = d ? {dex:Array.isArray(d.dexId) ? d.dexId : [], cat:normCat(d.category), tt:d.trainerType || '', ill:d.illustrator || '', types:normTypes(d.types)} : {dex:[], cat:'', tt:'', ill:'', types:[]};
+          for (const e of td.get(k)){ Object.assign(e, onlyTypes(e) ? {types:info.types} : info); if (!e.rarity && d && d.rarity) e.rarity = d.rarity; }
         } catch(err){}
         bump(td.get(k).length);
       }
@@ -3731,15 +3750,15 @@ async function backfillDex(){
     for (let i = 0; i < ids.length; i += 25){
       const chunk = ids.slice(i, i + 25), part = pt.filter(e => chunk.includes(e.cardId));
       try {
-        const data = await tcgGet(chunk.map(id => 'id:"' + id + '"').join(' OR '), {pageSize:'250', select:'id,nationalPokedexNumbers,supertype,artist,subtypes'}, 2, 15000);
+        const data = await tcgGet(chunk.map(id => 'id:"' + id + '"').join(' OR '), {pageSize:'250', select:'id,nationalPokedexNumbers,supertype,artist,subtypes,types'}, 2, 15000);
         const m = new Map(data.map(c => [c.id, ptcgExtra(c)]));
-        for (const e of part) Object.assign(e, m.get(e.cardId) || {dex:[], cat:'', tt:'', ill:''});
+        for (const e of part){ const info = m.get(e.cardId) || {dex:[], cat:'', tt:'', ill:'', types:[]}; Object.assign(e, onlyTypes(e) ? {types:info.types || []} : info); }
       } catch(err){}
       bump(part.length);
     }
   } finally {
     dexFill.running = false; save();
-    if (!$('v-dex').hidden) renderDex(); if (!$('v-home').hidden) renderHome(); if (!$('v-sets').hidden) renderSets();
+    if (!$('v-dex').hidden) renderDex(); if (!$('v-home').hidden) renderHome(); if (!$('v-sets').hidden) renderSets(); if (!$('v-cat').hidden) renderCatalog();
   }
 }
 // id delle carte confrontati senza zeri iniziali nei numeri (sv01-025 = sv1-25): vale per TCGdex e Pokémon TCG API
@@ -4369,7 +4388,7 @@ async function doRefreshAll(auto){
     for (let i = 0; i < ids.length; i += 25){
       const chunk = ids.slice(i, i + 25);
       try {
-        const data = await tcgGet(chunk.map(id => 'id:"' + id + '"').join(' OR '), {pageSize:'250', select:'id,cardmarket,tcgplayer,nationalPokedexNumbers,supertype,artist,subtypes'});
+        const data = await tcgGet(chunk.map(id => 'id:"' + id + '"').join(' OR '), {pageSize:'250', select:'id,cardmarket,tcgplayer,nationalPokedexNumbers,supertype,artist,subtypes,types'});
         const map = new Map(data.map(c => [c.id, Object.assign(c, ptcgExtra(c))]));
         for (const e of ptcg){ const c = map.get(e.cardId); if (c) applyPrices(e, c); }
       } catch(e){ failed += chunk.length; }
