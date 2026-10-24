@@ -286,6 +286,7 @@ textarea.note{width:100%;min-height:84px;padding:14px 18px;border-radius:18px;bo
 .qrow .body{flex:1;min-width:0}
 .qrow .nm{font-weight:700;font-size:.95rem}
 .qrow .meta{font-size:.82rem;color:var(--muted)}
+.qrow .qdup{display:inline-block;margin-top:4px;padding:2px 9px;border-radius:999px;background:var(--accent-soft);border:1px solid var(--accent-line);color:var(--accent);font-size:.76rem;font-weight:700}
 .qrow .acts{display:flex;gap:6px;flex:none;flex-wrap:wrap;justify-content:flex-end;max-width:56%}
 .qrow.wide{flex-wrap:wrap}
 .qrow.wide .acts{flex-basis:100%;max-width:none}
@@ -4046,7 +4047,7 @@ async function idbRun(mode, fn){
     return await new Promise((res, rej) => { const tx = db.transaction('jobs', mode), out = fn(tx.objectStore('jobs')); tx.oncomplete = () => { db.close(); res(out && out.result !== undefined ? out.result : null); }; tx.onerror = () => rej(tx.error); });
   } catch(e){ return null; }
 }
-const jobSave = j => idbRun('readwrite', st => st.put({id:j.id, t:j.t, crop:j.crop, raw:j.raw, uncropped:j.uncropped, status:j.status, msg:j.msg, rec:j.rec, photo:j.photo || null, quad:j.quad || null, ok:j.ok}));
+const jobSave = j => idbRun('readwrite', st => st.put({id:j.id, t:j.t, crop:j.crop, raw:j.raw, uncropped:j.uncropped, status:j.status, msg:j.msg, rec:j.rec, photo:j.photo || null, quad:j.quad || null, ok:j.ok, owned:j.owned || 0}));
 const jobDrop = id => idbRun('readwrite', st => st.delete(id));
 idbRun('readonly', st => st.getAll()).then(list => {
   for (const j of (list || []).sort((a, b) => a.t - b.t)){ if (j.status === 'reading') j.status = 'queued'; qJobs.push(j); }
@@ -4217,17 +4218,27 @@ function autoPick(rec, cands){
   if (a && b && !(b.includes(a) || a.includes(b) || (en && (b.includes(en) || en.includes(b))))) return null;
   return c;
 }
-function addAuto(job, c){
-  const rec = job.rec, est = condEstimate(rec), cond = est ? est.code : 'NM';
+// lingua, variante e condizione con cui la coda aggiungerebbe la carta letta
+function autoKeyOf(rec, c){
+  const est = condEstimate(rec), cond = est ? est.code : 'NM';
   const lang = {it:'IT', en:'EN', ja:'JP'}[rec.language] || 'IT', variant = defaultVariant(c, {holo:'Holo', reverse:'Reverse holo', normal:'Normale'}[rec.variant_hint]);
-  const key = [c.id, lang, variant, cond].join('|'), existed = catalog.some(x => x.key === key);
+  return {est, cond, lang, variant, key:[c.id, lang, variant, cond].join('|')};
+}
+// quante copie identiche (stessa chiave) hai già fra i risultati possibili di una carta da controllare
+function ownedOf(rec, cands){
+  const keys = new Set(cands.map(c => autoKeyOf(rec, c).key));
+  return catalog.filter(x => keys.has(x.key)).reduce((n, x) => n + (x.qty || 1), 0);
+}
+function addAuto(job, c){
+  const rec = job.rec, {est, cond, lang, variant, key} = autoKeyOf(rec, c);
+  const prev = catalog.find(x => x.key === key), existed = !!prev, had = prev ? (prev.qty || 1) : 0;
   addEntryFromCandidate(c, lang, variant, cond, 1, null, est ? {condEst:1, condNote:est.notes} : {});
   if (wantsOwnPhoto(c)) attachPhoto(key, job.raw || job.crop, job.photo, job.quad);
-  Object.assign(job, {status:'added', key, existed, name:c.name, setName:c.set.name, number:c.number, total:c.set.printedTotal, cond, img:(c.images && c.images.small) || '', crop:null, raw:null, photo:null, msg:''});
+  Object.assign(job, {status:'added', key, existed, had, name:c.name, setName:c.set.name, number:c.number, total:c.set.printedTotal, cond, img:(c.images && c.images.small) || '', crop:null, raw:null, photo:null, msg:''});
   jobDrop(job.id);
 }
 async function processJob(job){
-  job.status = 'reading'; job.msg = ''; renderQuick();
+  job.status = 'reading'; job.msg = ''; job.owned = 0; renderQuick();
   try {
     if (cfg.provider === 'gemini'){ const w = QGAP - (Date.now() - qLastCall); if (w > 0) await new Promise(r => setTimeout(r, w)); }
     qLastCall = Date.now();
@@ -4235,7 +4246,7 @@ async function processJob(job){
     if (!rec || (!rec.name_en && !rec.number && !rec.name_printed)){ job.status = 'review'; job.msg = 'carta non letta'; jobSave(job); return; }
     const found = await lookupCandidates(rec), pick = autoPick(rec, found);
     if (pick) addAuto(job, pick);
-    else { job.status = 'review'; job.msg = found.length > 1 ? 'più risultati possibili' : found.length ? 'lettura poco sicura' : 'carta non trovata'; jobSave(job); }
+    else { job.status = 'review'; job.msg = found.length > 1 ? 'più risultati possibili' : found.length ? 'lettura poco sicura' : 'carta non trovata'; job.owned = ownedOf(rec, found); jobSave(job); }
   } catch(e){
     const m = String(e.message || '');
     if (e.rate && e.daily){
@@ -4284,13 +4295,13 @@ function renderQuick(){
   let addedShown = 0;
   box.innerHTML = rows.filter(j => j.status !== 'added' || ++addedShown <= 15).map(j => {
     const id = esc(j.id);
-    if (j.status === 'added') return '<div class="qrow"><img src="' + esc(j.img) + '" alt=""><div class="body"><div class="nm">' + esc(j.name) + '</div><div class="meta">' + esc(j.setName) + ', ' + esc(j.number) + '/' + esc(j.total) + ', ' + esc(j.cond) + (j.existed ? ', doppione' : '') + '</div></div><div class="acts"><button class="btn small" type="button" data-q="undo" data-id="' + id + '">Annulla</button></div></div>';
+    if (j.status === 'added') return '<div class="qrow"><img src="' + esc(j.img) + '" alt=""><div class="body"><div class="nm">' + esc(j.name) + '</div><div class="meta">' + esc(j.setName) + ', ' + esc(j.number) + '/' + esc(j.total) + ', ' + esc(j.cond) + '</div>' + (j.existed ? '<span class="qdup">Ce l’hai già' + (j.had ? ': ne avevi ' + j.had : '') + '</span>' : '') + '</div><div class="acts"><button class="btn small" type="button" data-q="undo" data-id="' + id + '">Annulla</button></div></div>';
     const label = j.status === 'edges' ? 'Bordi da controllare' : j.status === 'queued' ? (qPausedJob === j.id && qPauseUntil > Date.now() ? 'In pausa, riprendo tra <span class="cdn">' + mmss(qPauseUntil - Date.now()) + '</span>' : j.msg ? esc(j.msg) : 'In coda') : j.status === 'reading' ? 'In lettura…' : j.status === 'review' ? 'Da controllare: ' + esc(j.msg) : 'Errore: ' + esc(j.msg);
     const fix = j.photo ? '<button class="btn small" type="button" data-q="edges" data-id="' + id + '">Correggi bordi</button>' : '';
     const del = '<button class="btn small danger" type="button" data-q="drop" data-id="' + id + '">Elimina</button>';
     const retry = j.status === 'error' ? '<button class="btn small" type="button" data-q="retry" data-id="' + id + '">Riprova</button>' : '';
     const acts = j.status === 'edges' ? fix + del : j.status === 'review' || j.status === 'error' ? '<button class="btn small solid" type="button" data-q="review" data-id="' + id + '">Controlla</button>' + retry + fix + del : j.status === 'queued' ? del : '';
-    return '<div class="qrow' + ((j.status === 'review' || j.status === 'error') && j.photo ? ' wide' : '') + '"><img src="' + esc(j.crop || j.photo || '') + '" alt=""><div class="body"><div class="nm">' + label + '</div>' + (j.rec && j.rec.name_printed ? '<div class="meta">' + esc(j.rec.name_printed) + (j.rec.number ? ', ' + esc(j.rec.number) : '') + '</div>' : '') + '</div><div class="acts">' + acts + '</div></div>';
+    return '<div class="qrow' + ((j.status === 'review' || j.status === 'error') && j.photo ? ' wide' : '') + '"><img src="' + esc(j.crop || j.photo || '') + '" alt=""><div class="body"><div class="nm">' + label + '</div>' + (j.rec && j.rec.name_printed ? '<div class="meta">' + esc(j.rec.name_printed) + (j.rec.number ? ', ' + esc(j.rec.number) : '') + '</div>' : '') + (j.status === 'review' && j.owned ? '<span class="qdup">Forse ce l’hai già: ' + j.owned + (j.owned > 1 ? ' copie' : ' copia') + '</span>' : '') + '</div><div class="acts">' + acts + '</div></div>';
   }).join('') || '<div class="empty muted">Inquadra una carta e tocca il pulsante giallo: l’app la riconosce e la aggiunge da sola, e intanto puoi fotografare la successiva. Le carte dubbie restano qui da controllare.</div>';
 }
 // una carta da controllare si apre nella pagina di aggiunta, con i dati già letti
