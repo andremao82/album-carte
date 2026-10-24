@@ -22,20 +22,20 @@ const day=ms=>Math.floor(ms/DAY);
  // 2) aggiornamenti in giorni diversi
  t.d.querySelector('nav button[data-go="cat"]').click(); t.d.querySelector('#list .item').click();
  const refresh=async(label,days,tr)=>{ clock=Date.UTC(2026,9,1,12)+days*DAY; trend=tr; t.d.querySelector('#v-card [data-a="refresh"]').click(); await wait(1300); const s=(H(t)||{})['tcgdex:it:me01-127|n']; console.log(label.padEnd(54),'->',JSON.stringify(s)); };
- await refresh('g0  10,10 (+1%, sotto la soglia)',0,10.1);
+ await refresh('g0  10,10 (stesso giorno: sostituisce)',0,10.1);
  await refresh('g1  10,50 (+5%: nuovo punto)',1,10.5);
  await refresh('g2  10,50 (uguale: nessun punto)',2,10.5);
  await refresh('g3  8,00 (-24%: nuovo punto)',3,8);
- await refresh('g10 8,05 (poca variazione, solo 7 giorni)',10,8.05);
- await refresh('g20 8,05 (14+ giorni dall\'ultimo: nuovo punto)',20,8.05);
+ await refresh('g10 8,05 (piccola variazione: nuovo punto)',10,8.05);
+ await refresh('g20 8,05 (uguale, 10 giorni: nessun punto)',20,8.05);
  await refresh('g20 8,20 (stesso giorno: sostituisce)',20,8.2);
  const svg=t.d.querySelector('#v-card svg.vch'); console.log('3 grafico dello storico:',!!svg,'| variazione:',txt(t,'#v-card .hist .hh span'),'| punti:',svg.querySelectorAll('circle.dt').length,'| testi:',[...svg.querySelectorAll('text')].map(x=>x.textContent).join(' - '));
  if(!svg||svg.querySelectorAll('circle.dt').length!==(H(t)['tcgdex:it:me01-127|n']||[]).length) throw new Error('punti del grafico diversi dallo storico');
- // 4) poche rilevazioni -> resta il grafico a 4 medie con la nota
- const t2=boot([entry()]); await wait(300); t2.d.querySelector('nav button[data-go="cat"]').click(); t2.d.querySelector('#list .item').click();
+ // 4) una sola rilevazione e niente medie Cardmarket -> nessun grafico, solo la nota (con le medie: grafico_carta_test.js)
+ const t2=boot([entry({pr:{normal:10}})]); await wait(300); t2.d.querySelector('nav button[data-go="cat"]').click(); t2.d.querySelector('#list .item').click();
  console.log('4 con una sola rilevazione:',t2.d.querySelector('#v-card svg.vch')?'grafico':'nessun grafico','|',txt(t2,'#v-card .hist .cap'));
  if(t2.d.querySelector('#v-card svg.vch')) throw new Error('grafico con un solo punto');
- // 5) diradamento: 300 punti giornalieri -> max 120, ultimi 90 giorni intatti
+ // 5) diradamento: 300 punti giornalieri -> max 160, ultimi 90 giorni intatti
  const long=Array.from({length:300},(_,i)=>[day(clock)-299+i,1000+i]); 
  const t3=boot([entry()],{'tcgdex:it:me01-127|n':long}); await wait(200); t3.d.querySelector('nav button[data-go="cat"]').click(); t3.d.querySelector('#list .item').click();
  clock+=DAY; trend=20; t3.d.querySelector('#v-card [data-a="refresh"]').click(); await wait(1300);

@@ -757,7 +757,22 @@ textarea.note{font:inherit;font-size:.95rem}
 .pmw input{width:130px;min-height:36px;padding:0 6px;border:0;background:none;color:var(--ink);text-align:right;font-size:1rem;outline:none}
 .hist{margin-top:18px}
 .hist .hh{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:6px}
-.hist .hh b{font-size:1.05rem}
+.hist .hh b{font-size:1.05rem;margin-right:auto}
+.hist .hx{align-self:center;flex:none;width:34px;height:34px;margin:-8px -8px -8px 0;border:0;background:none;color:var(--muted);display:grid;place-items:center;padding:0}
+.hist .hx svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.hist .pbrow{margin:8px 0 2px}
+.hist .pb{padding:7px 8px;font-size:.84rem;background:var(--surface2)}
+.hist .pb[aria-pressed=true]{background:var(--accent-fill)}
+.hist .hnote{margin:6px 0 0;font-size:.75rem}
+.hist .hmsg{margin:18px 0;text-align:center}
+.vch .dt.es{fill:var(--surface);stroke:var(--accent);stroke-width:1.4}
+.chfull{position:fixed;inset:0;z-index:55;background:var(--bg);overflow-y:auto;padding:calc(env(safe-area-inset-top,0px) + 8px) max(16px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 16px) max(16px,env(safe-area-inset-left,0px))}
+@media (max-height:500px){.cf-top{margin-bottom:4px}.cf-top .cap{display:none}.chfull .hist .hh{margin-bottom:0}.chfull .pbrow{margin-top:4px}}
+.chfull[hidden]{display:none}
+.cf-top{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+.cf-top div{flex:1;min-width:0}
+.cf-top b{display:block;font-size:1.2rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chfull .hist{margin-top:0}
 .hist .hh span{font-size:.78rem;font-weight:700}
 .hist .hf{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:6px}
 .det{padding:0 14px;margin-top:18px}
@@ -1104,6 +1119,7 @@ textarea.note{font:inherit;font-size:.95rem}
   </div>
   <button id="qe-later" class="btn small" type="button" data-qe="later">Più tardi</button>
 </div>
+<div id="chfull" class="chfull" role="dialog" aria-label="Storico del prezzo" hidden></div>
 <div id="zoom" class="zoom" role="dialog" aria-label="Immagine della carta" hidden><img id="zoom-img" alt=""><button class="zclose" type="button" data-z="close" aria-label="Chiudi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
 <div id="act-back" class="sheet-back" hidden></div>
 <div id="act-sheet" class="sheet actsheet" role="dialog" hidden></div>
@@ -1253,7 +1269,7 @@ function thinSeries(s, t){
   }
   out.reverse();
   if (out[0] !== s[0]) out.unshift(s[0]);
-  while (out.length > 120) out.splice(1, 1);
+  while (out.length > 160) out.splice(1, 1);
   return out;
 }
 function recordPrice(e, day){
@@ -1262,7 +1278,7 @@ function recordPrice(e, day){
   const s = hist[k] || (hist[k] = []), last = s[s.length - 1];
   if (!last) s.push([t, c]);
   else if (last[0] === t) last[1] = c;
-  else if (t > last[0] && (Math.abs(c - last[1]) >= Math.max(10, last[1] * 0.03) || t - last[0] >= 14)) s.push([t, c]);
+  else if (t > last[0] && (c !== last[1] || t - last[0] >= 14)) s.push([t, c]); // ogni cambio di prezzo, al massimo un punto al giorno
   else return;
   if (s.length > 100) hist[k] = thinSeries(s, dayNow());
   scheduleHistSave();
@@ -2782,7 +2798,6 @@ function renderCard(){
   const e = entryByKey(cardKey);
   if (!e){ leaveCard(); return; }
   const u = unit(e), info = priceInfo(e.pr, e.variant), prev = previewURL(e), art = imgSrc(hiImg(prev) || prev), note = imgNote(e);
-  const pts = (hist[histKey(e)] || []).filter(q => q.length >= 2).map(q => ({day:q[0], value:q[1] / 100}));
   const condName = (CONDS.find(c => c[0] === e.cond) || [0, e.cond])[1];
   let h = '<div class="cd-top"><button class="rbtn glass" type="button" data-a="back" aria-label="Indietro">' + ICON_BACK + '</button><div class="ttl"></div>' +
     '<button class="rbtn glass" type="button" data-a="menu" aria-label="Altre azioni">' + ICON_MORE + '</button></div>' +
@@ -2804,9 +2819,8 @@ function renderCard(){
       '<div class="mr"><label for="cd-pm">Prezzo mio</label><span class="pmw"><input id="cd-pm" inputmode="decimal" autocomplete="off" placeholder="non impostato" value="' + (e.priceManual != null ? e.priceManual.toFixed(2).replace('.', ',') : '') + '">€</span></div>' +
       (info ? '<div class="mr sub"><span>Mercato (Near Mint)</span><span>' + eur(info.v) + (info.approx ? ' circa' : '') + '</span></div>' : '') +
       (e.priceManual == null && e.price != null && e.cond !== 'NM' ? '<div class="mr sub"><span>Con la condizione ' + esc(e.cond) + '</span><span>' + eur(u) + '</span></div>' : '') + '</div>';
-  { let hd = ''; if (pts.length >= 2){ const a = pts[0], b = pts[pts.length - 1], d = b.value - a.value; hd = '<span style="color:' + (d >= 0 ? 'var(--ok)' : 'var(--danger)') + '">' + (d >= 0 ? '▲ ' : '▼ ') + signed(d) + ' in ' + Math.max(1, b.day - a.day) + ' gg</span>'; }
-    h += '<div class="pnl hist"><div class="hh"><b>Storico prezzo</b>' + hd + '</div>' +
-      (pts.length >= 2 ? areaChart(pts, 150, 'Storico del prezzo') : '<p class="cap" style="margin:4px 0">Lo storico si riempie con gli aggiornamenti dei prezzi.</p>') +
+  { const hb = cardHistBody(e, 340, 150);
+    h += '<div class="pnl hist"><div class="hh"><b>Storico prezzo</b>' + hb.hd + (hb.ok ? '<button class="hx" type="button" data-a="chfull" aria-label="Grafico a tutto schermo">' + ICON_EXPAND + '</button>' : '') + '</div>' + hb.body +
       '<div class="hf">' + (e.priceT ? '<span class="cap">Aggiornato il ' + fmtDate(e.priceT) + '</span>' : '<span></span>') + '<button class="lnk" type="button" data-a="refresh">Aggiorna il prezzo</button></div></div>'; }
   { const dex = Array.isArray(e.dex) ? [...new Set(e.dex)].sort((a, b) => a - b) : [];
     h += '<div class="pnl det">' + dex.map(n => '<button class="dr" type="button" data-dex="' + n + '"><img class="spr" src="' + SPRITE(n) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span>' + esc(dexName(n) || 'Pokémon') + '</span><em>#' + n + '</em><i>›</i></button>').join('') +
@@ -2940,12 +2954,62 @@ function pushView(name, ctx){
   showView(top);
 }
 function doPop(){
+  closeChartFull();
   navStack.pop(); const top = navStack[navStack.length - 1];
   if (top) showView(top); else { go(navBase); window.scrollTo(0, navScroll); }
 }
 function popView(){ if (navStack.length && history.state && history.state.d) history.back(); else doPop(); }
 function openCard(key){ if (entryByKey(key)) pushView('card', {key}); }
 function leaveCard(){ popView(); }
+/* ---------- storico della carta: punti del grafico, periodo, tutto schermo ---------- */
+let cardRange = 0;
+const CARD_RANGES = [[30, '1 mese'], [90, '3 mesi'], [365, '1 anno'], [0, 'Tutto']];
+const ICON_EXPAND = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg>';
+// storico salvato; prima, se lo storico comincia dopo, le medie Cardmarket a 30 e 7 giorni (con la nota); in fondo il prezzo attuale
+function cardHistPoints(e){
+  const pts = (hist[histKey(e)] || []).filter(q => q.length >= 2).map(q => ({day:q[0], value:q[1] / 100}));
+  const pd = e.priceT ? Math.floor(e.priceT / 864e5) : null; if (pd == null) return pts;
+  if (e.price != null && (!pts.length || pts[pts.length - 1].day < pd)) pts.push({day:pd, value:e.price});
+  const info = priceInfo(e.pr, e.variant), first = pts.length ? pts[0].day : Infinity;
+  if (info && info.src === 'cm' && !info.approx && e.variant !== 'Reverse holo') // le medie Cardmarket valgono per la carta normale/holo
+    pts.unshift(...[[30, e.pr.avg30, 15], [7, e.pr.avg7, 4]].filter(a => a[1] > 0 && pd - a[2] < first).map(a => ({day:pd - a[2], value:a[1], note:'Media Cardmarket ' + a[0] + ' gg'})));
+  return pts;
+}
+// solo il periodo scelto: il primo punto è il prezzo che valeva all'inizio del periodo
+function rangePoints(pts, days){
+  if (!(days > 0)) return pts;
+  const t = dayNow(), start = t - days, out = pts.filter(p => p.day >= start), prev = pts.filter(p => p.day < start).pop();
+  if (prev && (!out.length || out[0].day > start)) out.unshift({day:start, value:prev.value});
+  if (out.length === 1 && out[0].day < t) out.push({day:t, value:out[0].value});
+  return out;
+}
+// variazione, grafico, periodi e nota delle medie (w × h = misure del grafico)
+function cardHistBody(e, w, h){
+  const all = cardHistPoints(e), pts = rangePoints(all, cardRange);
+  if (all.length < 2) return {ok:false, hd:'', body:'<p class="cap" style="margin:4px 0">Lo storico si riempie con gli aggiornamenti dei prezzi.</p>'};
+  let hd = ''; if (pts.length >= 2){ const a = pts[0], b = pts[pts.length - 1], d = b.value - a.value; hd = '<span style="color:' + (d >= 0 ? 'var(--ok)' : 'var(--danger)') + '">' + (d >= 0 ? '▲ ' : '▼ ') + signed(d) + ' in ' + Math.max(1, b.day - a.day) + ' gg</span>'; }
+  const body = (pts.length >= 2 ? areaChart(pts, h, 'Storico del prezzo', w) : '<p class="cap hmsg">Nessun prezzo registrato in questo periodo.</p>') +
+    '<div class="pbrow eq" role="group" aria-label="Periodo">' + CARD_RANGES.map(r => '<button class="pb" type="button" data-cr="' + r[0] + '" aria-pressed="' + (cardRange === r[0]) + '">' + r[1] + '</button>').join('') + '</div>' +
+    (pts.some(p => p.note) ? '<p class="cap hnote">I punti vuoti sono medie Cardmarket, prima dello storico registrato.</p>' : '');
+  return {ok:true, hd, body};
+}
+function renderChartFull(){
+  const f = $('chfull'), e = entryByKey(cardKey); if (!e){ closeChartFull(); return; }
+  const w = Math.max(240, Math.min(f.clientWidth || innerWidth, 1000) - 32), h = Math.round(Math.max(160, Math.min((innerHeight || 700) - (innerHeight < 500 ? 175 : 250), w * 1.35)));
+  const hb = cardHistBody(e, w, h);
+  f.innerHTML = '<div class="cf-top"><div><b>' + esc(e.name) + '</b><span class="cap">' + esc(setLine(e.setName, e.number, e.total)) + '</span></div>' +
+    '<button class="rbtn glass" type="button" data-a="close" aria-label="Chiudi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>' +
+    '<div class="hist"><div class="hh"><b>Storico prezzo</b>' + hb.hd + '</div>' + hb.body + '</div>';
+}
+function openChartFull(){ $('chfull').hidden = false; renderChartFull(); }
+function closeChartFull(){ const f = $('chfull'); if (f.hidden) return; f.hidden = true; f.innerHTML = ''; }
+$('chfull').addEventListener('click', ev => {
+  if (ev.target.closest('svg[data-chart]')) return;
+  const cr = ev.target.closest('[data-cr]'); if (cr){ cardRange = parseInt(cr.dataset.cr, 10); renderChartFull(); renderCard(); return; }
+  if (ev.target.closest('[data-a="close"]')) closeChartFull();
+});
+document.addEventListener('keydown', ev => { if (ev.key === 'Escape') closeChartFull(); });
+window.addEventListener('resize', () => { if (!$('chfull').hidden) renderChartFull(); });
 window.addEventListener('popstate', () => { if (navStack.length && ['v-card', 'v-setd', 'v-scan', 'v-dexd', 'v-quick', 'v-set', 'v-value'].some(id => !$(id).hidden)) doPop(); });
 const openSettings = () => pushView('set', {});
 $('btn-setdone').addEventListener('click', () => popView());
@@ -2979,6 +3043,7 @@ $('v-card').addEventListener('click', async ev => {
   const e = entryByKey(cardKey); if (!e) return;
   const ed = ev.target.closest('[data-ed]');
   if (ed){ if (e[ed.dataset.ed] !== ed.dataset.v){ applyEdit(e, {[ed.dataset.ed]:ed.dataset.v}); renderCard(); } return; }
+  const cr = ev.target.closest('[data-cr]'); if (cr){ cardRange = parseInt(cr.dataset.cr, 10); renderCard(); return; }
   const dx = ev.target.closest('[data-dex]'); if (dx){ pushView('dexd', {kind:'pokemon', n:parseInt(dx.dataset.dex, 10)}); return; }
   const ar = ev.target.closest('[data-art]'); if (ar){ pushView('dexd', {kind:'art', name:ar.dataset.art}); return; }
   const b = ev.target.closest('[data-a]'); if (!b) return;
@@ -2989,6 +3054,7 @@ $('v-card').addEventListener('click', async ev => {
   else if (a === 'qplus'){ e.qty = Math.min(999, e.qty + 1); save(); renderCard(); }
   else if (a === 'qminus'){ if (e.qty > 1){ e.qty--; save(); renderCard(); } }
   else if (a === 'refresh'){ b.disabled = true; b.textContent = 'Aggiorno…'; await refreshOne(e); }
+  else if (a === 'chfull') openChartFull();
   else if (a === 'photo') photoMenu(e);
   else if (a === 'set') pushView('setd', {key:groupKey(e)});
   else if (a === 'menu'){
@@ -3271,10 +3337,10 @@ const signedPct = p => (p >= 0 ? '+' : '−') + Math.abs(p).toFixed(1).replace('
 /* ---------- grafico ad area come l'app nativa: date in basso (al massimo 4), euro a destra, punti, tocco ---------- */
 const CHART_MAX_DOTS = 31;
 const MESI = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
-// giorni da mostrare sull'asse: al massimo n, distribuiti, senza doppioni, primo e ultimo compresi
+// giorni da mostrare sull'asse: al massimo n, distribuiti nel tempo (il giorno con un punto più vicino), senza doppioni, primo e ultimo compresi
 function chartTickDays(days, n = 4){
   const u = [...new Set(days)].sort((a, b) => a - b); if (u.length <= n) return u;
-  const out = []; for (let i = 0; i < n; i++){ const d = u[Math.round(i * (u.length - 1) / (n - 1))]; if (out[out.length - 1] !== d) out.push(d); }
+  const out = []; for (let i = 0; i < n; i++){ const tg = u[0] + i * (u[u.length - 1] - u[0]) / (n - 1), d = u.reduce((b, x) => Math.abs(x - tg) < Math.abs(b - tg) ? x : b); if (out[out.length - 1] !== d) out.push(d); }
   return out;
 }
 // "12 ott"; con l'anno ("12 ott 25") se non è l'anno in corso
@@ -3298,9 +3364,9 @@ function niceTicks(lo, hi, want = 3, whole = false){
 }
 const chartReg = new Map(); let chartSeq = 0;
 // pts: [{day, value}] in ordine di giorno
-function areaChart(pts, h = 150, label = 'Grafico del valore'){
-  const id = 'ch' + (++chartSeq), W = 340, H = h, L = 4, R = 52, T = 10, B = 22;
-  const vals = pts.map(p => p.value), whole = chartWholeEuros(vals), ticks = niceTicks(Math.min(...vals), Math.max(...vals), 3, whole);
+function areaChart(pts, h = 150, label = 'Grafico del valore', w = 340){
+  const id = 'ch' + (++chartSeq), W = w, H = h, L = 4, R = 52, T = 10, B = 22;
+  const vals = pts.map(p => p.value), whole = chartWholeEuros(vals), ticks = niceTicks(Math.min(...vals), Math.max(...vals), h >= 260 ? 5 : 3, whole); // grafico alto (tutto schermo): più livelli
   const y0 = ticks[0], y1 = ticks[ticks.length - 1], d0 = pts[0].day, d1 = pts[pts.length - 1].day;
   const X = d => L + (d1 > d0 ? (d - d0) / (d1 - d0) : 0.5) * (W - L - R), Y = v => T + (H - T - B) * (1 - (v - y0) / ((y1 - y0) || 1));
   const xy = pts.map(p => [X(p.day), Y(p.value)]);
@@ -3319,7 +3385,7 @@ function areaChart(pts, h = 150, label = 'Grafico del valore'){
   let g = '<defs><linearGradient id="' + id + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient></defs>';
   g += ticks.map(v => '<line class="gr" x1="' + L + '" x2="' + (W - R + 4) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (W - R + 8) + '" y="' + (Y(v) + 3.5).toFixed(1) + '">' + esc(chartEuroLabel(v, whole)) + '</text>').join('');
   g += '<path d="' + area + '" fill="url(#' + id + 'g)"/><path class="ln" d="' + line + '"/>';
-  if (n <= CHART_MAX_DOTS) g += xy.map(q => '<circle class="dt" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="2.6"/>').join('');
+  if (n <= CHART_MAX_DOTS) g += xy.map((q, i) => '<circle class="dt' + (pts[i].note ? ' es' : '') + '" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="2.6"/>').join('');
   g += tk.map((d, i) => '<text x="' + X(d).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === tk.length - 1 ? 'end' : 'middle') + '">' + esc(chartDayLabel(d)) + '</text>').join('');
   chartReg.set(id, {pts, X, Y, W, R, T, H, B}); if (chartReg.size > 24) chartReg.delete(chartReg.keys().next().value);
   const last = pts[n - 1];
@@ -3331,7 +3397,7 @@ function chartSelect(svg, clientX){
   const r = svg.getBoundingClientRect(), x = r.width ? (clientX - r.left) / r.width * c.W : 0;
   let best = null, bd = Infinity; for (const p of c.pts){ const d = Math.abs(c.X(p.day) - x); if (d < bd){ bd = d; best = p; } }
   if (!best) return null;
-  const px = c.X(best.day), py = c.Y(best.value), t1 = eur(best.value), t2 = chartDayLabel(best.day);
+  const px = c.X(best.day), py = c.Y(best.value), t1 = eur(best.value), t2 = best.note || chartDayLabel(best.day);
   const bw = Math.max(t1.length, t2.length) * 6.2 + 16, bx = Math.min(Math.max(px - bw / 2, 0), c.W - bw);
   svg.querySelector('.sel').innerHTML = '<line class="rl" x1="' + px.toFixed(1) + '" x2="' + px.toFixed(1) + '" y1="' + (c.T + 26) + '" y2="' + (c.H - c.B) + '"/><circle class="sd" cx="' + px.toFixed(1) + '" cy="' + py.toFixed(1) + '" r="5"/>' +
     '<rect class="tb" x="' + bx.toFixed(1) + '" y="' + (c.T - 8) + '" width="' + bw.toFixed(1) + '" height="30" rx="8"/><text class="tv" x="' + (bx + bw / 2).toFixed(1) + '" y="' + (c.T + 5) + '" text-anchor="middle">' + esc(t1) + '</text><text x="' + (bx + bw / 2).toFixed(1) + '" y="' + (c.T + 17) + '" text-anchor="middle">' + esc(t2) + '</text>';
