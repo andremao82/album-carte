@@ -14,9 +14,9 @@ vm.createContext(ctx); vm.runInContext(fs.readFileSync(require('./percorsi').SIT
 const ev=(req)=>{ let p=null; const e={request:req,respondWith:x=>{p=x}, waitUntil:x=>{p=x}}; return {e,get p(){return p}}; };
 const req=(url,mode='cors',method='GET')=>({url,mode,method});
 (async()=>{
- let x=ev(); handlers.install(x.e); await x.p; console.log('1 installazione: file conservati:',[...store.get('album-v3').keys()].map(u=>u.replace('https://x.netlify.app','')).join(' '),'| skipWaiting:',skipped);
+ let x=ev(); handlers.install(x.e); await x.p; console.log('1 installazione: file conservati:',[...store.get('album-v4').keys()].map(u=>u.replace('https://x.netlify.app','')).join(' '),'| skipWaiting:',skipped);
  store.set('vecchia',new Map()); x=ev(); handlers.activate(x.e); await x.p; console.log('2 attivazione: cache vecchia tolta:',!store.has('vecchia'),'| clients.claim:',claimed);
- let f=ev(req('https://x.netlify.app/','navigate')); handlers.fetch(f.e); let r=await f.p; console.log('3 pagina con rete:',await r.text(),'| copia aggiornata:',await (await store.get('album-v3').get('https://x.netlify.app/index.html')).clone().text());
+ let f=ev(req('https://x.netlify.app/','navigate')); handlers.fetch(f.e); let r=await f.p; console.log('3 pagina con rete:',await r.text(),'| copia aggiornata:',await (await store.get('album-v4').get('https://x.netlify.app/index.html')).clone().text());
  netMode='down'; f=ev(req('https://x.netlify.app/','navigate')); handlers.fetch(f.e); r=await f.p; console.log('4 pagina senza rete -> copia conservata:',await r.text());
  netMode='hang'; const t0=Date.now(); f=ev(req('https://x.netlify.app/','navigate')); handlers.fetch(f.e); r=await f.p; console.log('5 rete che non risponde -> copia dopo',Math.round((Date.now()-t0)/1000),'s:',await r.text());
  netMode='503'; f=ev(req('https://x.netlify.app/','navigate')); handlers.fetch(f.e); r=await f.p; console.log('5b sito sospeso (errore 503) -> copia conservata:',await r.text());

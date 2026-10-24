@@ -666,6 +666,14 @@ textarea.note{font:inherit;font-size:.95rem}
 .bksheet p{margin:0 auto 6px;max-width:34ch;color:var(--muted);font-size:.95rem}
 .bksheet .btn{width:100%;margin-top:12px}
 .bksheet .btn.solid{margin-top:20px}
+#cx-back{z-index:35}
+.cxmiss{text-align:left;margin:12px 0 0;max-height:34vh;overflow:auto;border-radius:14px;background:var(--sheet-panel)}
+.cxmiss:empty{display:none}
+.cxmiss h3{margin:0;padding:10px 14px 4px;font-size:.8rem;font-weight:700;text-transform:uppercase;letter-spacing:.03em;color:var(--muted)}
+.cxmiss ul{list-style:none;margin:0;padding:0 14px 8px}
+.cxmiss li{padding:6px 0;border-top:1px solid var(--line);font-size:.92rem}
+.cxmiss li span{color:var(--muted)}
+.bksheet p.cxhow{margin-top:12px;font-size:.85rem}
 .ashead{display:flex;align-items:center;gap:10px;padding:22px 0 10px}
 .ashead h2{flex:1;margin:0;font-size:1.85rem;font-weight:800}
 .addsheet .cicon{background:var(--sheet-panel)}
@@ -1060,6 +1068,7 @@ textarea.note{font:inherit;font-size:.95rem}
   <div class="sgroup">
     <button id="btn-bak" class="srow2 act" type="button"><span class="ico green"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg></span><span class="lbl">Backup</span></button>
     <button id="btn-csv" class="srow2 act" type="button"><span class="ico teal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M9 13h6M9 17h6"/></svg></span><span class="lbl">Esporta CSV</span></button>
+    <button id="btn-collectr" class="srow2 act" type="button"><span class="ico purple"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></span><span class="lbl">Esporta per Collectr</span></button>
     <div class="srow2"><span class="ico yellow"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v5l3 2"/><path d="M4 12a8 8 0 1 0 2.3-5.6M4 4v4h4"/></svg></span><label class="lbl" for="s-bksheet">All’apertura</label><select id="s-bksheet"><option value="yes">Proponi il backup</option><option value="no">Solo promemoria</option></select></div>
     <label class="srow2 act" for="restore"><span class="ico blue"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V5M7 9l5-5 5 5M5 20h14"/></svg></span><span class="lbl">Ripristina da backup</span></label>
     <button id="btn-autobak" class="srow2 act" type="button"><span class="ico orange"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span><span class="lbl">Ripristina l’ultima copia automatica</span></button>
@@ -1147,6 +1156,16 @@ textarea.note{font:inherit;font-size:.95rem}
   <p id="bks-n"></p>
   <button id="bks-save" class="btn solid" type="button">Salva backup</button>
   <button id="bks-later" class="btn" type="button">Più tardi</button>
+</div>
+<div id="cx-back" class="sheet-back" hidden></div>
+<div id="cx-sheet" class="sheet addsheet bksheet cxsheet" role="dialog" aria-modal="true" aria-labelledby="cx-t" hidden>
+  <div class="bkico" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg></div>
+  <h2 id="cx-t">Esporta per Collectr</h2>
+  <p id="cx-p"></p>
+  <div id="cx-miss" class="cxmiss"></div>
+  <p id="cx-how" class="cxhow">Collectr importa il file per email: invialo dall’indirizzo del tuo account Collectr, come spiega la loro guida all’importazione. Le carte vengono abbinate al prodotto inglese di TCGplayer, con la lingua indicata nel file.</p>
+  <button id="cx-save" class="btn solid" type="button">Salva il file</button>
+  <button id="cx-close" class="btn" type="button">Chiudi</button>
 </div>
 <div id="undo" class="undo" hidden><span id="undo-t"></span><button id="undo-b" class="lnk" type="button">Annulla</button></div>
 
@@ -4574,6 +4593,81 @@ $('btn-csv').addEventListener('click', () => {
   const rows = catalog.map(e => { const u = unit(e); return [e.name, e.setName, e.number, e.total, e.lang, e.variant, e.cond, e.qty, num2(e.price), num2(e.priceManual), u == null ? '' : num2(u), u == null ? '' : num2(u * e.qty)].map(csvCell).join(';'); });
   download('catalogo-carte.csv', '\ufeff' + [head.join(';')].concat(rows).join('\r\n'), 'text/csv;charset=utf-8');
 });
+/* Esporta per Collectr (24/10/2026): Collectr importa solo il CSV dell'app TCGplayer, abbinato col Product ID.
+   La tabella carta \u2192 Product ID (tcgplayer-ids.json) si prepara sul Mac con strumenti/tcgplayer_ids.py:
+   il browser non pu\u00f2 chiederla a TCGplayer. Le carte senza corrispondenza restano fuori e sono elencate. */
+const TCGP_HEAD = ['Quantity','Name','Simple Name','Set','Card Number','Set Code','Printing','Condition','Language','Rarity','Product ID','SKU'];
+const TCGP_COND = {MT:'Near Mint', NM:'Near Mint', EX:'Lightly Played', GD:'Moderately Played', LP:'Moderately Played', PL:'Heavily Played', PO:'Damaged'};
+const TCGP_LANG = {IT:'Italian', EN:'English'};
+const tcgpNum = s => String(s == null ? '' : s).toUpperCase().split('/')[0].trim().replace(/(^|[^0-9])0+(?=[0-9])/g, '$1');
+const csvQ = v => { v = String(v == null ? '' : v); return /[,"\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+let tcgpTable = null;
+async function loadTcgpTable(){
+  if (tcgpTable) return tcgpTable;
+  const r = await fetch('tcgplayer-ids.json', {cache:'no-cache'});
+  if (!r.ok) throw new Error('http ' + r.status);
+  const t = await r.json(); if (!t || !t.sets) throw new Error('tabella non valida');
+  return (tcgpTable = t);
+}
+// stampa di TCGplayer: per "Normale" e "Altro" si usa Holofoil se TCGplayer ha solo quella
+function tcgpPrinting(e){
+  const t = (e.pr && e.pr.tcg) || {};
+  if (e.variant === 'Reverse holo') return 'Reverse Holofoil';
+  if (e.variant === '1st edition') return t.first == null && t.firstNormal != null ? '1st Edition' : '1st Edition Holofoil';
+  if (e.variant === 'Holo') return 'Holofoil';
+  return t.normal == null && t.holo != null ? 'Holofoil' : 'Normal';
+}
+// {pid, set} oppure {why}: motivo per cui la carta resta fuori
+function tcgpMatch(e, tab){
+  if (e.lang === 'JP') return {why:'Giapponesi (su TCGplayer sono prodotti diversi)'};
+  let sets = null, num = null;
+  const td = e.src === 'tcgdex' && e.srcId ? e.srcId : (/^tcgdex:[^:]+:(.+)$/.exec(e.cardId || '') || [])[1];
+  if (td){ const i = td.lastIndexOf('-'); if (i > 0){ sets = (tab.td || {})[td.slice(0, i)] || []; num = td.slice(i + 1); } }
+  else { const m = /^([^-:]+)-(.+)$/.exec(e.cardId || ''); if (m){ sets = [m[1]]; num = m[2]; } }
+  if (!sets) return {why:'Senza codice del catalogo'};
+  sets = sets.filter(s => tab.sets[s]);
+  if (!sets.length) return {why:'Set non presente su TCGplayer'};
+  const n = tcgpNum(num);
+  for (const s of sets){ const pid = tab.sets[s].p[n]; if (pid) return {pid, set:tab.sets[s].n}; }
+  return {why:'Carta non presente su TCGplayer'};
+}
+function collectrExport(list, tab){
+  const rows = new Map(), miss = [];
+  for (const e of list){
+    const m = tcgpMatch(e, tab);
+    if (!m.pid){ miss.push({e, why:m.why}); continue; }
+    const r = {qty:e.qty, name:e.name, set:m.set, num:e.number + (e.total ? '/' + e.total : ''), printing:tcgpPrinting(e),
+      cond:TCGP_COND[e.cond] || 'Near Mint', lang:TCGP_LANG[e.lang] || 'English', rarity:e.rarity || '', pid:m.pid};
+    const k = [r.pid, r.printing, r.cond, r.lang].join('|'); // MT e NM diventano entrambe Near Mint: una riga sola
+    if (rows.has(k)) rows.get(k).qty += r.qty; else rows.set(k, r);
+  }
+  const lines = [...rows.values()].map(r => [r.qty, r.name, r.name, r.set, r.num, '', r.printing, r.cond, r.lang, r.rarity, r.pid, ''].map(csvQ).join(','));
+  return {csv:[TCGP_HEAD.join(',')].concat(lines).join('\r\n') + '\r\n', cards:list.length - miss.length, copies:[...rows.values()].reduce((a, r) => a + r.qty, 0), rows:rows.size, miss};
+}
+let cxFile = null;
+function closeCollectr(){ $('cx-back').hidden = true; $('cx-sheet').hidden = true; cxFile = null; }
+$('btn-collectr').addEventListener('click', async () => {
+  if (!catalog.length){ toast('Il catalogo \u00e8 vuoto'); return; }
+  const btn = $('btn-collectr'); btn.disabled = true;
+  let tab = null;
+  try { tab = await loadTcgpTable(); } catch(err){ toast('Tabella TCGplayer non disponibile: serve la connessione'); }
+  btn.disabled = false; if (!tab) return;
+  const x = collectrExport(catalog, tab), nm = x.miss.length;
+  cxFile = x.cards ? x.csv : null;
+  $('cx-p').textContent = x.cards
+    ? fmtN(x.cards) + (x.cards === 1 ? ' carta' : ' carte') + ' (' + fmtN(x.copies) + (x.copies === 1 ? ' copia' : ' copie') + ') pronte nel formato TCGplayer.' + (nm ? ' ' + fmtN(nm) + (nm === 1 ? ' resta fuori perch\u00e9 non ha' : ' restano fuori perch\u00e9 non hanno') + ' una corrispondenza su TCGplayer:' : '')
+    : 'Nessuna carta del catalogo ha una corrispondenza su TCGplayer.';
+  const by = new Map(); for (const m of x.miss){ if (!by.has(m.why)) by.set(m.why, []); by.get(m.why).push(m.e); }
+  $('cx-miss').innerHTML = [...by].map(([why, es]) => '<h3>' + esc(why) + ' \u00b7 ' + es.length + '</h3><ul>' + es.map(e => '<li>' + esc(e.name) + ' <span>\u00b7 ' + esc([e.setName, e.number + (e.total ? '/' + e.total : '')].filter(Boolean).join(' ')) + (e.lang && e.lang !== 'IT' ? ' \u00b7 ' + esc(e.lang) : '') + '</span></li>').join('') + '</ul>').join('');
+  $('cx-save').hidden = !cxFile; $('cx-how').hidden = !cxFile;
+  $('cx-back').hidden = false; $('cx-sheet').hidden = false;
+});
+$('cx-save').addEventListener('click', () => { // nello stesso tocco: serve al foglio di condivisione di iPhone
+  const f = cxFile; closeCollectr();
+  if (f) download('collectr-tcgplayer-' + new Date().toISOString().slice(0, 10) + '.csv', f, 'text/csv;charset=utf-8');
+});
+$('cx-close').addEventListener('click', closeCollectr);
+$('cx-back').addEventListener('click', closeCollectr);
 let persistState = 'unknown';
 async function askPersist(){
   try {

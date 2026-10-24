@@ -2,7 +2,7 @@
    - Il guscio dell'app (pagina, icone, manifest) viene conservato: l'app si apre anche senza rete e mostra il catalogo.
    - La pagina si cerca prima in rete (così gli aggiornamenti arrivano subito); se la rete non risponde entro 3 secondi o manca, si usa la copia conservata.
    - Le richieste verso altri siti (prezzi, immagini, riconoscimento) non vengono toccate. */
-const VERSION = 'album-v3';
+const VERSION = 'album-v4';
 const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
@@ -16,6 +16,8 @@ self.addEventListener('fetch', e => {
   if (req.method !== 'GET') return;
   const url = new URL(req.url);
   if (url.origin !== self.location.origin) return;
+  // tabella per l'esportazione verso Collectr: sempre dalla rete, così una tabella aggiornata arriva subito
+  if (url.pathname.endsWith('/tcgplayer-ids.json')) return;
   // il profilo per l'icona (e ogni altro file scaricabile) passa direttamente dalla rete: non va mai scambiato per la pagina dell'app
   if (req.mode === 'navigate' && !(url.pathname.endsWith('/') || url.pathname.endsWith('/index.html'))) return;
   if (req.mode === 'navigate'){

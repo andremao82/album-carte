@@ -13,5 +13,5 @@ assert n==1,n
 if s2!=s: open(p,'w',encoding='utf-8').write(s2)
 P
 rm -f "$Z"
-cd "$A" && zip -q -X "$Z" index.html sw.js manifest.webmanifest _headers carte.mobileconfig icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png
+cd "$A" && zip -q -X "$Z" index.html sw.js manifest.webmanifest _headers carte.mobileconfig icon-192.png icon-512.png icon-maskable-512.png apple-touch-icon.png tcgplayer-ids.json
 echo "pacchetto pronto: $Z (sito: $SITO)"
