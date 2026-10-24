@@ -16,7 +16,7 @@ function eq(a,b,msg){ if(a!==b) throw new Error('NON SUPERATO: '+msg+' (atteso '
  const t=boot(); await wait(200); t.d.querySelector('nav button[data-go="cat"]').click(); t.d.getElementById('v-list').click();
  eq(names(t),'Alfa,Beta,Gamma,Delta,Omega','1 tutte (più recenti)');
  eq(txt(t,'c-foot'),'5 voci','1 piede');
- eq([...t.d.querySelectorAll('#c-chips .pb')].map(b=>(b.querySelector('span')||b).textContent).join('|'),'Tutte|Lingua|Set|Tipo|Rarità|Variante|Condizione|Doppioni|Senza prezzo|Prezzo mio','1 tutti i filtri in una fila di pillole');
+ eq([...t.d.querySelectorAll('#c-chips .pb')].map(b=>(b.querySelector('span')||b).textContent).join('|'),'Tutte|Lingua|Set|Tipo|Rarità|Sigla|Variante|Condizione|Doppioni|Senza prezzo|Prezzo mio','1 tutti i filtri in una fila di pillole');
  eq(chip(t,'all').getAttribute('aria-pressed'),'true','1 Tutte attiva');
  eq([...t.d.getElementById('cf-lang').options].map(o=>o.textContent).join('|'),'Tutte le lingue|Italiano|Inglese','2 menu lingua');
  eq([...t.d.getElementById('cf-set').options].map(o=>o.textContent).join('|'),'Tutti i set|Mega · IT|Scarlatto · EN|Scarlatto · IT','2 menu set');

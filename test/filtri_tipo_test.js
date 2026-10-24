@@ -21,7 +21,7 @@ const pill=(t,id)=>t.d.getElementById(id).parentElement;
    e(3,'Squirtle',{cat:'Pokemon',types:['Acqua'],rarity:'Rara doppia'}),e(4,'Professore',{cat:'Trainer',types:[],rarity:'Non comune'}),e(5,'Energia Erba',{cat:'Energy',types:[],rarity:'None'}),
    e(6,'Zapdos',{cat:'Pokemon',types:['Lampo'],rarity:'Holo Rare V'})];
  let t=boot(seed); await wait(200); t.d.querySelector('nav button[data-go="cat"]').click(); t.d.getElementById('v-list').click();
- eq([...t.d.querySelectorAll('#c-chips .pb')].map(b=>(b.querySelector('span')||b).textContent).join('|'),'Tutte|Lingua|Set|Tipo|Rarità|Variante|Condizione|Doppioni|Senza prezzo|Prezzo mio','1 fila completa di pillole');
+ eq([...t.d.querySelectorAll('#c-chips .pb')].map(b=>(b.querySelector('span')||b).textContent).join('|'),'Tutte|Lingua|Set|Tipo|Rarità|Sigla|Variante|Condizione|Doppioni|Senza prezzo|Prezzo mio','1 fila completa di pillole');
  eq(t.d.getElementById('fpanel'),null,'1 niente pannello Altri filtri');
  eq(t.d.querySelectorAll('#v-cat select:not(#c-chips select):not(#c-sort)').length,0,'1 nessun menu fuori dalle pillole');
  eq(opts(t,'cf-type'),'Tutti i tipi|Erba (1)|Fuoco (2)|Acqua (1)|Lampo (1)|Allenatore (1)|Energia (1)','1 tipi in ordine, in italiano, con le quantità');
@@ -71,6 +71,18 @@ const pill=(t,id)=>t.d.getElementById(id).parentElement;
  const c0=t.calls.length; t.d.querySelector('nav button[data-go="home"]').click(); t.d.querySelector('nav button[data-go="cat"]').click(); await wait(100);
  eq(t.calls.filter((u,i)=>i>=c0&&/cards\/sv01|pokemontcg/.test(u)).length,0,'6 nessun nuovo tentativo entro 10 minuti');
 
+ // 7b. sigla dal nome: ex/EX distinte, trattino di TCGdex, V ASTRO = VSTAR
+ const sig=[e(1,'Charizard ex'),e(2,'Charizard-ex',{qty:2}),e(3,'Charizard EX'),e(4,'Mewtwo-EX'),e(5,'Pikachu V'),e(6,'Pikachu VMAX'),e(7,'Charizard V ASTRO'),e(8,'Arceus VSTAR'),
+   e(9,'Pikachu e Zekrom GX'),e(10,'Exeggcute'),e(11,'Alexandra'),e(12,'Rayquaza V-UNION'),e(13,'Greninja BREAK'),e(14,'Infernape LV.X'),e(15,'Vaporeon'),e(16,'Energia Lotta')];
+ t=boot(sig); await wait(200); t.d.querySelector('nav button[data-go="cat"]').click(); t.d.getElementById('v-list').click();
+ eq(opts(t,'cf-sigla'),'Tutte le sigle|ex (3)|EX (2)|GX (1)|V (1)|VMAX (1)|VSTAR (2)|V-UNION (1)|BREAK (1)|LV.X (1)','7b menu sigle in ordine, con le quantità');
+ set(t,'cf-sigla','ex'); eq(names(t),'Charizard ex,Charizard-ex','7b ex (anche col trattino), non Exeggcute');
+ ok(pill(t,'cf-sigla').textContent.startsWith('ex'),'7b la pillola mostra la sigla'); eq(pill(t,'cf-sigla').getAttribute('aria-pressed'),'true','7b pillola accesa');
+ set(t,'cf-sigla','EX'); eq(names(t),'Charizard EX,Mewtwo-EX','7b EX distinte dalle ex');
+ set(t,'cf-sigla','V'); eq(names(t),'Pikachu V','7b V, non VMAX né Vaporeon');
+ set(t,'cf-sigla','VSTAR'); eq(names(t),'Charizard V ASTRO,Arceus VSTAR','7b VSTAR anche col nome italiano V ASTRO');
+ t.d.querySelector('#c-chips [data-qf="all"]').click(); eq(t.d.getElementById('cf-sigla').value,'','7b Tutte azzera la sigla');
+ ok(!t.errors.length,'7b nessun errore');
  // 7. aggiunta: la carta trovata porta con sé il tipo
  const src=html.match(/function fromTcgdex[\s\S]*?\n}/)[0];
  ok(/types:normTypes\(c\.types\)/.test(src),'7 fromTcgdex porta i tipi');

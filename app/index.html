@@ -2687,13 +2687,14 @@ function renderCatalog(){
     return '<button class="item erow' + (on ? ' picked' : '') + '" type="button" data-open="' + esc(e.key) + '">' + entryRow(e, chk) + '</button>';
   }).join('');
 }
-/* filtri tutti nella fila di pillole: Lingua, Set, Tipo, Rarità, Variante e Condizione a menu; Doppioni, Senza prezzo e Prezzo mio da accendere */
-const cf = {lang:'', set:'', type:'', rar:'', dup:false, noprice:false, variant:'', cond:'', manual:false};
+/* filtri tutti nella fila di pillole: Lingua, Set, Tipo, Rarità, Sigla, Variante e Condizione a menu; Doppioni, Senza prezzo e Prezzo mio da accendere */
+const cf = {lang:'', set:'', type:'', rar:'', sigla:'', dup:false, noprice:false, variant:'', cond:'', manual:false};
 function passesFilters(e){
   if (cf.lang && e.lang !== cf.lang) return false;
   if (cf.set && groupKey(e) !== cf.set) return false;
   if (cf.type && !(typeKeys(e) || []).includes(cf.type)) return false;
   if (cf.rar && rarityName(e.rarity) !== cf.rar) return false;
+  if (cf.sigla && siglaOf(e.name) !== cf.sigla) return false;
   if (cf.dup && !(e.qty > 1)) return false;
   if (cf.noprice && unit(e) != null) return false;
   if (cf.variant && e.variant !== cf.variant) return false;
@@ -2701,8 +2702,8 @@ function passesFilters(e){
   if (cf.manual && e.priceManual == null) return false;
   return true;
 }
-const anyFilter = () => !!(cf.lang || cf.set || cf.type || cf.rar || cf.dup || cf.noprice || cf.variant || cf.cond || cf.manual);
-function clearFilters(){ Object.assign(cf, {lang:'', set:'', type:'', rar:'', dup:false, noprice:false, variant:'', cond:'', manual:false}); }
+const anyFilter = () => !!(cf.lang || cf.set || cf.type || cf.rar || cf.sigla || cf.dup || cf.noprice || cf.variant || cf.cond || cf.manual);
+function clearFilters(){ Object.assign(cf, {lang:'', set:'', type:'', rar:'', sigla:'', dup:false, noprice:false, variant:'', cond:'', manual:false}); }
 function fillFilters(){
   const names = new Map(); for (const e of catalog){ const k = groupKey(e); if (!names.has(k)) names.set(k, (e.setName || 'Set') + (e.srcLang ? ' · ' + (LANGMAP[e.srcLang] || '') : '')); }
   const langs = LANGS.filter(l => catalog.some(e => e.lang === l));
@@ -2710,10 +2711,11 @@ function fillFilters(){
   if (cf.set && !names.has(cf.set)) cf.set = '';
   const sets = [...names.keys()].sort((a, b) => names.get(a).localeCompare(names.get(b)));
   const by = fn => { const m = new Map(); for (const e of catalog) for (const k of [].concat(fn(e) || [])){ if (k) m.set(k, (m.get(k) || 0) + e.qty); } return m; };
-  const T = by(typeKeys), Rr = by(e => rarityName(e.rarity)), V = by(e => e.variant), C = by(e => e.cond);
+  const T = by(typeKeys), Rr = by(e => rarityName(e.rarity)), S = by(e => siglaOf(e.name)), V = by(e => e.variant), C = by(e => e.cond);
   const unread = catalog.filter(e => !typeKeys(e)).length;
   if (cf.type && !T.has(cf.type)) cf.type = '';
   if (cf.rar && !Rr.has(cf.rar)) cf.rar = '';
+  if (cf.sigla && !S.has(cf.sigla)) cf.sigla = '';
   if (cf.variant && !V.has(cf.variant)) cf.variant = '';
   if (cf.cond && !C.has(cf.cond)) cf.cond = '';
   const condName = k => { const c = CONDS.find(x => x[0] === k); return c ? c[0] + ' – ' + c[1] : k; };
@@ -2722,7 +2724,7 @@ function fillFilters(){
   $('c-chips').innerHTML = '<button class="pb" type="button" data-qf="all" aria-pressed="' + !anyFilter() + '">Tutte</button>' +
     '<span class="pb menu" aria-pressed="' + !!cf.lang + '"><span>' + esc(cf.lang ? LANGN[cf.lang] || cf.lang : 'Lingua') + '</span><select id="cf-lang" aria-label="Lingua"><option value="">Tutte le lingue</option>' + langs.map(l => '<option value="' + l + '"' + (cf.lang === l ? ' selected' : '') + '>' + esc(LANGN[l] || l) + '</option>').join('') + '</select></span>' +
     '<span class="pb menu" aria-pressed="' + !!cf.set + '"><span>' + esc(cf.set ? names.get(cf.set) : 'Set') + '</span><select id="cf-set" aria-label="Set"><option value="">Tutti i set</option>' + sets.map(k => '<option value="' + esc(k) + '"' + (cf.set === k ? ' selected' : '') + '>' + esc(names.get(k)) + '</option>').join('') + '</select></span>' +
-    menu('cf-type', 'Tipo', cf.type, 'Tutti i tipi', T, TYPE_ORDER) + menu('cf-rar', 'Rarità', cf.rar, 'Tutte le rarità', Rr, RAR_ORDER) +
+    menu('cf-type', 'Tipo', cf.type, 'Tutti i tipi', T, TYPE_ORDER) + menu('cf-rar', 'Rarità', cf.rar, 'Tutte le rarità', Rr, RAR_ORDER) + menu('cf-sigla', 'Sigla', cf.sigla, 'Tutte le sigle', S, SIGLE) +
     menu('cf-var', 'Variante', cf.variant, 'Tutte le varianti', V, VARS) + menu('cf-cond', 'Condizione', cf.cond, 'Tutte le condizioni', C, CONDS.map(c => c[0]), condName) +
     '<button class="pb" type="button" data-qf="dup" aria-pressed="' + cf.dup + '">Doppioni</button>' +
     '<button class="pb" type="button" data-qf="noprice" aria-pressed="' + cf.noprice + '">Senza prezzo</button>' +
@@ -2740,7 +2742,7 @@ $('c-chips').addEventListener('click', ev => {
   else cf[v] = !cf[v];
   renderCatalog();
 });
-$('c-chips').addEventListener('change', ev => { const t = ev.target; if (t.id === 'cf-lang') cf.lang = t.value; else if (t.id === 'cf-set') cf.set = t.value; else if (t.id === 'cf-type') cf.type = t.value; else if (t.id === 'cf-rar') cf.rar = t.value; else if (t.id === 'cf-var') cf.variant = t.value; else if (t.id === 'cf-cond') cf.cond = t.value; else return; renderCatalog(); });
+$('c-chips').addEventListener('change', ev => { const t = ev.target; if (t.id === 'cf-lang') cf.lang = t.value; else if (t.id === 'cf-set') cf.set = t.value; else if (t.id === 'cf-type') cf.type = t.value; else if (t.id === 'cf-rar') cf.rar = t.value; else if (t.id === 'cf-sigla') cf.sigla = t.value; else if (t.id === 'cf-var') cf.variant = t.value; else if (t.id === 'cf-cond') cf.cond = t.value; else return; renderCatalog(); });
 $('c-q').addEventListener('input', renderCatalog);
 $('c-qx').addEventListener('click', () => { $('c-q').value = ''; renderCatalog(); $('c-q').focus(); });
 $('c-sort').addEventListener('change', () => { cfg.albumSort = $('c-sort').value; LS.set('pkm_cfg', cfg); renderCatalog(); });
@@ -3634,6 +3636,14 @@ const RAR_IT = {'common':'Comune', 'uncommon':'Non comune', 'rare':'Rara', 'rare
   'secret rare':'Segreto rara', 'rare secret':'Segreto rara', 'ace spec rare':'Rara Asso tattico', 'rara asso tattico':'Rara Asso tattico', 'shiny rare':'Rara Lucente', 'rare shiny':'Rara Lucente', 'radiant rare':'Rara radiosa', 'promo':'Promo'};
 const rarityName = r => { const t = String(r || '').trim(); if (!t || /^(none|nessuna)$/i.test(t)) return ''; return RAR_IT[t.toLowerCase()] || t; };
 const RAR_ORDER = ['Comune', 'Non comune', 'Rara', 'Olografica Rara', 'Olografica Rara V', 'Olografica Rara VMAX', 'Olografica Rara VSTAR', 'Rara doppia', 'Ultrarara', 'Rara illustrazione', 'Rara illustrazione speciale', 'Rara iper', 'Segreto rara', 'Rara Asso tattico', 'Rara Lucente', 'Promo'];
+// sigla in fondo al nome ("Charizard ex", "Charizard-ex" di TCGdex, "Charizard-EX", "Pikachu V ASTRO" = VSTAR); ex ed EX restano distinte
+const SIGLE = ['ex', 'EX', 'GX', 'V', 'VMAX', 'VSTAR', 'V-UNION', 'BREAK', 'LV.X'];
+function siglaOf(name){
+  const m = String(name || '').trim().match(/(?:^|[\s-])(ex|EX|GX|VMAX|VSTAR|V ASTRO|V-UNION|V|BREAK|LV\.\s?X)$/i); if (!m) return '';
+  const t = m[1].replace(/\s/g, '');
+  if (t === 'ex' || t === 'EX') return t;
+  const u = t.toUpperCase(); return u === 'VASTRO' ? 'VSTAR' : u;
+}
 const normCat = s => { const t = String(s || '').toLowerCase(); if (!t) return ''; if (/allenator|trainer|dresseur|entrenador|treinador/.test(t)) return 'Trainer'; if (/energ/.test(t)) return 'Energy'; return 'Pokemon'; };
 const ptcgExtra = c => { const cat = normCat(c.supertype); return {...(Array.isArray(c.types) || c.supertype ? {types:normTypes(c.types)} : {}), tcg:mapTcgKeys(c.tcgplayer && c.tcgplayer.prices, r => numPos(r.market) != null ? numPos(r.market) : numPos(r.mid)), dex:c.nationalPokedexNumbers || [], cat, tt:cat === 'Trainer' ? ((c.subtypes && c.subtypes[0]) || '') : '', ill:c.artist || ''}; };
 const pendingDex = () => catalog.filter(e => !Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined).length;
