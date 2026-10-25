@@ -1,5 +1,6 @@
 const OUT=require('path').resolve(__dirname,'../.work/shot')+'/'; require('fs').mkdirSync(OUT,{recursive:true});
-// Impostazioni riordinate (24/10/2026), pagina intera in 3 schermate. Uso: node shot_impostazioni.js [dark|light]
+// Impostazioni riordinate (24/10/2026), pagina intera in 5 schermate. Uso: node shot_impostazioni.js [dark|light] [cond]
+// con "cond": solo il gruppo Prezzo per condizione con le descrizioni (25/10/2026) → impostazioni_cond_<tema>.png
 const {launch}=require('./browser');
 const theme=process.argv[2]||'dark';
 (async()=>{ const browser=await launch();
@@ -15,5 +16,6 @@ const theme=process.argv[2]||'dark';
   await page.goto('file://'+require('path').resolve(__dirname,'../app/index.html')); await new Promise(r=>setTimeout(r,800));
   await page.evaluate(()=>{ const w=document.getElementById('prevwarn'); if(w) w.hidden=true; document.getElementById('hm-gear').click(); });
   await new Promise(r=>setTimeout(r,400));
+  if(process.argv[3]==='cond'){ await page.evaluate(()=>document.getElementById('cc-MT').closest('.sgroup').previousElementSibling.scrollIntoView()); await page.evaluate(()=>window.scrollBy(0,-90)); await new Promise(r=>setTimeout(r,200)); await page.screenshot({path:OUT+'impostazioni_cond_'+theme+'.png'}); await browser.close(); return; }
   for(let i=0;i<5;i++){ await page.evaluate(i=>window.scrollTo(0,i*760),i); await new Promise(r=>setTimeout(r,200)); await page.screenshot({path:OUT+'impostazioni_'+theme+'_'+(i+1)+'.png'}); }
   await browser.close(); })();

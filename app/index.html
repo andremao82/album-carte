@@ -310,6 +310,7 @@ pre.sfoot{font-family:ui-monospace,Menlo,monospace;font-size:.78rem}
 .srow2{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:10px 16px;background:none;border:0;color:inherit;font:inherit;text-align:left;box-sizing:border-box}
 .srow2+.srow2{border-top:1px solid var(--line)}
 .srow2 .lbl{flex:1;min-width:0;font-weight:500;font-size:1rem}
+.srow2 .lbl .sdesc{display:block;margin-top:2px;font-size:.8rem;font-weight:400;line-height:1.3;color:var(--muted)}
 .srow2.act{cursor:pointer}
 .srow2.act:active{background:rgba(255,255,255,.05)}
 .srow2.danger .lbl{color:var(--danger)}
@@ -325,7 +326,7 @@ pre.sfoot{font-family:ui-monospace,Menlo,monospace;font-size:.78rem}
 .ico.purple{background:#8B5CF6}.ico.blue{background:#0A84FF}.ico.yellow{background:#FFCB05}.ico.yellow svg{stroke:#000}
 .ico.teal{background:#30B0C7}.ico.gray{background:#8E8E93}.ico.orange{background:#FF9F0A}.ico.green{background:#34C759}.ico.red{background:#FF453A}
 .ico.code{color:#fff;font-size:.72rem;font-weight:800;letter-spacing:.02em}
-.ico.mt{background:#34C759}.ico.nm{background:#6BCB4A}.ico.ex{background:#B6C42B}.ico.gd{background:#E0A800}.ico.lp{background:#F08A1C}.ico.pl{background:#EA5A2C}.ico.po{background:#E0372E}
+.ico.mt{background:#34C759}.ico.nm{background:#6BCB4A}.ico.ex{background:#B6C42B}.ico.gd{background:#E0A800}.ico.lp{display:grid;background:#F08A1C}.ico.pl{background:#EA5A2C}.ico.po{background:#E0372E}
 .sinfo{padding:14px 16px}
 .sinfo p{margin:0 0 8px;font-size:.9rem;color:var(--muted);line-height:1.4}
 .sinfo p:last-child{margin-bottom:0}
@@ -1047,13 +1048,13 @@ textarea.note{font:inherit;font-size:.95rem}
 
   <div class="sh">Prezzo per condizione</div>
   <div class="sgroup">
-    <div class="srow2"><span class="ico code mt">MT</span><label class="lbl" for="cc-MT">Mint</label><input id="cc-MT" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
-    <div class="srow2"><span class="ico code nm">NM</span><label class="lbl" for="cc-NM">Near Mint</label><input id="cc-NM" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
-    <div class="srow2"><span class="ico code ex">EX</span><label class="lbl" for="cc-EX">Excellent</label><input id="cc-EX" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
-    <div class="srow2"><span class="ico code gd">GD</span><label class="lbl" for="cc-GD">Good</label><input id="cc-GD" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
-    <div class="srow2"><span class="ico code lp">LP</span><label class="lbl" for="cc-LP">Light Played</label><input id="cc-LP" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
-    <div class="srow2"><span class="ico code pl">PL</span><label class="lbl" for="cc-PL">Played</label><input id="cc-PL" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
-    <div class="srow2"><span class="ico code po">PO</span><label class="lbl" for="cc-PO">Poor</label><input id="cc-PO" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
+    <div class="srow2"><span class="ico code mt">MT</span><label class="lbl" for="cc-MT">Mint<small class="sdesc">Perfetta, appena uscita dalla bustina</small></label><input id="cc-MT" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
+    <div class="srow2"><span class="ico code nm">NM</span><label class="lbl" for="cc-NM">Near Mint<small class="sdesc">Al massimo 1-2 micro-imperfezioni visibili solo da vicino</small></label><input id="cc-NM" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
+    <div class="srow2"><span class="ico code ex">EX</span><label class="lbl" for="cc-EX">Excellent<small class="sdesc">Leggero whitening o qualche graffio superficiale</small></label><input id="cc-EX" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
+    <div class="srow2"><span class="ico code gd">GD</span><label class="lbl" for="cc-GD">Good<small class="sdesc">Usura evidente su bordi e angoli, nessuna piega</small></label><input id="cc-GD" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
+    <div class="srow2"><span class="ico code lp">LP</span><label class="lbl" for="cc-LP">Light Played<small class="sdesc">Usura diffusa, piccole pieghe o graffi marcati</small></label><input id="cc-LP" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
+    <div class="srow2"><span class="ico code pl">PL</span><label class="lbl" for="cc-PL">Played<small class="sdesc">Pieghe evidenti, forte usura</small></label><input id="cc-PL" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
+    <div class="srow2"><span class="ico code po">PO</span><label class="lbl" for="cc-PO">Poor<small class="sdesc">Danni gravi: strappi, acqua, scritte</small></label><input id="cc-PO" inputmode="decimal" autocomplete="off"><span class="suf">%</span></div>
     <button id="btn-ccdef" class="srow2 act" type="button"><span class="ico gray"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg></span><span class="lbl">Ripristina le percentuali predefinite</span></button>
   </div>
   <p class="sfoot">Percentuale del prezzo di mercato (che vale per una carta Near Mint) per le altre condizioni. Il prezzo che imposti a mano su una carta non cambia.</p>
