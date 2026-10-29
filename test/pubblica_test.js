@@ -29,6 +29,7 @@ ok(cmd.includes('--branch="$GITHUB_REF_NAME"'),'ramo del push (main = produzione
 ok(/npx --yes wrangler@4 pages deploy/.test(wf)&&!/wrangler-action/.test(wf),'wrangler 4 diretto (l\'azione ufficiale installava la vecchia 3.90)');
 ok(/rc=\$\{PIPESTATUS\[0\]\}/.test(wf)&&/exit \$rc/.test(wf),'un caricamento fallito fa fallire il passo');
 ok(/::error title=Caricamento su Cloudflare non riuscito::/.test(wf),'errore di Cloudflare come annotazione');
+ok(/\$\{#val\} caratteri/.test(wf)&&!/echo[^\n]*\$CF_TOKEN|echo[^\n]*\$val\b/.test(wf),'forma dei secret segnalata (lunghezza e caratteri) senza stamparli');
 // credenziali solo come secret
 ok(/CF_TOKEN:\s*\$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/.test(wf)&&/CF_ACCOUNT:\s*\$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/.test(wf),'token e account dai secret');
 ok(/tr -d '\[:space:\]'/.test(wf),'spazi e a capo tolti dai secret (il primo token era stato incollato su due righe)');
