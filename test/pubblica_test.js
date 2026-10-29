@@ -23,7 +23,9 @@ ok(/node-version:\s*24/.test(wf),'stessa versione di Node del Mac');
 const sito=(rd('strumenti/pacchetto.sh').match(/^SITO="https:\/\/([a-z0-9-]+)\.pages\.dev\/"/m)||[])[1];
 const cmd=(wf.match(/npx --yes wrangler@4 (pages deploy[^\n]*)/)||[])[1]||'';
 ok(sito==='carte-pokemon-5vf','SITO invariato: '+sito);
-ok(cmd.includes('--project-name='+sito),'pubblica sul progetto di SITO: '+cmd);
+// il progetto si chiama carte-pokemon: -5vf è solo nell'indirizzo (Cloudflare lo aggiunge se il nome è già preso)
+ok(/--project-name=carte-pokemon\s/.test(cmd),'pubblica sul progetto carte-pokemon: '+cmd);
+ok(rd('CLAUDE.md').includes('**`carte-pokemon`**'),'CLAUDE.md: nome del progetto');
 ok(/^pages deploy app\s/.test(cmd),'pubblica la cartella app/');
 ok(cmd.includes('--branch="$GITHUB_REF_NAME"'),'ramo del push (main = produzione)');
 ok(/npx --yes wrangler@4 pages deploy/.test(wf)&&!/wrangler-action/.test(wf),'wrangler 4 diretto (l\'azione ufficiale installava la vecchia 3.90)');

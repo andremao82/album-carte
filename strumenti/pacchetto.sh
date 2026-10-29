@@ -1,6 +1,6 @@
 #!/bin/bash
 # Rilascio: scrive SITO nel profilo dell'icona (app/carte.mobileconfig) e crea album-carte-pwa.zip nella radice del
-# progetto, da caricare a mano su Cloudflare Pages (Workers & Pages → carte-pokemon-5vf → Create deployment).
+# progetto, da caricare a mano su Cloudflare Pages (Workers & Pages → carte-pokemon → Create deployment).
 # SITO = indirizzo pubblico del sito: finisce nel profilo dell'icona (carte.mobileconfig).
 SITO="https://carte-pokemon-5vf.pages.dev/"
 set -e; R="$(cd "$(dirname "$0")/.." && pwd)"; A="$R/app"; Z="$R/album-carte-pwa.zip"

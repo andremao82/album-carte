@@ -1,5 +1,6 @@
 # Pubblicazione automatica su Cloudflare Pages (dal 29/10/2026): a ogni push esegue tutti i test e, se passano,
-# carica app/ sul progetto esistente carte-pokemon-5vf (stesso indirizzo = stessi dati sul telefono).
+# carica app/ sul progetto esistente carte-pokemon (indirizzo carte-pokemon-5vf.pages.dev: Cloudflare ha aggiunto -5vf
+# perché il nome era già preso; stesso indirizzo = stessi dati sul telefono).
 # Push su main → sito online; push su un altro ramo → solo anteprima (https://<ramo>.carte-pokemon-5vf.pages.dev).
 # Secret del repository (Settings → Secrets and variables → Actions): CLOUDFLARE_API_TOKEN (permesso
 # "Cloudflare Pages: Edit") e CLOUDFLARE_ACCOUNT_ID.
@@ -42,7 +43,7 @@ jobs:
             echo "::notice title=$v::${#val} caratteri, $f"
           done
           set +e
-          npx --yes wrangler@4 pages deploy app --project-name=carte-pokemon-5vf --branch="$GITHUB_REF_NAME" --commit-dirty=true 2>&1 | tee deploy.log
+          npx --yes wrangler@4 pages deploy app --project-name=carte-pokemon --branch="$GITHUB_REF_NAME" --commit-dirty=true 2>&1 | tee deploy.log
           rc=${PIPESTATUS[0]}
           if [ $rc -ne 0 ]; then
             echo "::error title=Caricamento su Cloudflare non riuscito::$(grep -iE 'error|✘|code' deploy.log | head -6 | tr '\n' ' ' | cut -c1-600)"

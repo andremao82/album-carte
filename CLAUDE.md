@@ -20,7 +20,7 @@ Si lavora con Claude Code **sul Mac dell'utente, in questa cartella** (git local
 - **Service worker**: incrementa `VERSION` in `app/sw.js` se cambia la lista dei file in cache.
 
 ## Fine lavoro e rilascio
-Il sito è il progetto Cloudflare Pages **`carte-pokemon-5vf`**, indirizzo `https://carte-pokemon-5vf.pages.dev/`. Lo pubblica GitHub Actions (`.github/workflows/pubblica.yml`): a ogni push esegue tutti i test e, se passano, carica `app/` con wrangler. Credenziali nei secret del repository GitHub `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` (li gestisce l'utente: mai scriverli nei file).
+Il sito è il progetto Cloudflare Pages **`carte-pokemon`** (il nome del progetto è senza `-5vf`: il suffisso c'è solo nell'indirizzo), indirizzo `https://carte-pokemon-5vf.pages.dev/`. Lo pubblica GitHub Actions (`.github/workflows/pubblica.yml`): a ogni push esegue tutti i test e, se passano, carica `app/` con wrangler. Credenziali nei secret del repository GitHub `CLOUDFLARE_API_TOKEN` e `CLOUDFLARE_ACCOUNT_ID` (li gestisce l'utente: mai scriverli nei file).
 - **Ogni push su `main` va online da solo**: su `main` arriva solo lavoro finito, con tutti i test passati e screenshot controllati.
 - Lavoro da provare sull'iPhone prima di pubblicarlo: commit e push su un ramo a parte (es. `prova-scanner`). Va all'indirizzo di anteprima `https://<ramo>.carte-pokemon-5vf.pages.dev/` senza toccare il sito; si unisce a `main` solo dopo l'ok dell'utente. Attenzione: l'anteprima è un altro dominio, quindi lì il catalogo del telefono non c'è.
 - Raggruppa: un push su `main` per gruppo di modifiche, non uno per ogni piccola correzione.
@@ -31,7 +31,7 @@ Il sito è il progetto Cloudflare Pages **`carte-pokemon-5vf`**, indirizzo `http
 4. Controlla l'esito della pubblicazione su https://github.com/andremao82/album-carte/actions (o chiedi all'utente se non riesci a vederlo).
 5. Nella risposta: cosa è cambiato, se è già online o su un ramo di prova, cosa hai verificato, **cosa non hai potuto verificare** (comportamento reale su iPhone, Safari/Web Clip).
 
-Riserva, solo se GitHub Actions non funziona: `bash strumenti/pacchetto.sh` crea `album-carte-pwa.zip`, che l'utente carica a mano da dash.cloudflare.com → Workers & Pages → `carte-pokemon-5vf` → Create deployment.
+Riserva, solo se GitHub Actions non funziona: `bash strumenti/pacchetto.sh` crea `album-carte-pwa.zip`, che l'utente carica a mano da dash.cloudflare.com → Workers & Pages → `carte-pokemon` → Create deployment.
 
 ## Regole di prodotto
 - Uso personale, non di scambio: **niente avvisi di prezzo né funzioni di compravendita** (escluse anche analisi scambi e altri mercati).
