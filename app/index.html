@@ -249,6 +249,14 @@ textarea.note{width:100%;min-height:84px;padding:14px 18px;border-radius:18px;bo
 .undo .lnk{font-size:1rem}
 
 /* ---- Scansione rapida ---- */
+/* barra con il tasto Indietro sempre in alto; l'ombra piena copre anche la zona dell'ora */
+#v-quick .cd-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);margin:0 -16px 12px;padding:4px 16px 6px;box-shadow:0 calc(-1 * env(safe-area-inset-top,0px)) 0 var(--bg)}
+.qall{display:flex;gap:8px;margin:0 0 10px}
+.qall .btn{flex:1;min-width:0;padding:0 10px}
+/* righe aggiunte: Annulla (✕) e Conferma (✓) come pulsanti tondi, affiancati */
+.qrow .qic{width:44px;min-height:44px;padding:0;flex:none}
+.qrow .qic svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round}
+.qrow .acts.two{flex-wrap:nowrap;gap:8px}
 .qcam{position:relative;border-radius:24px;overflow:hidden;background:#000;aspect-ratio:3/4;max-height:56vh;width:100%;border:1px solid var(--line)}
 .qcam video{width:100%;height:100%;object-fit:cover;display:block}
 .qframe{position:absolute;inset:7% 13%;border:3px solid rgba(255,203,5,.85);border-radius:18px;pointer-events:none}
@@ -4277,8 +4285,21 @@ async function runQueue(){
 }
 function undoJob(job){
   const e = catalog.find(x => x.key === job.key);
-  if (e){ if (job.existed) e.qty = Math.max(1, e.qty - 1); else catalog = catalog.filter(x => x !== e); save(); }
+  // toglie una copia; la voce sparisce solo se era l'ultima e non c'era già prima (vale anche annullando fuori ordine)
+  if (e){ if ((e.qty || 1) > 1) e.qty--; else if (!job.existed) catalog = catalog.filter(x => x !== e); save(); }
   job.status = 'undone'; renderQuick();
+}
+// Conferma tutte: le carte restano in collezione, escono solo dalla lista; Annulla tutte: le toglie dalla collezione
+function keepAllJobs(){
+  const n = qJobs.filter(j => j.status === 'added').length; if (!n) return;
+  for (let i = qJobs.length - 1; i >= 0; i--) if (qJobs[i].status === 'added' || qJobs[i].status === 'undone') qJobs.splice(i, 1);
+  renderQuick(); toast(n === 1 ? 'Carta confermata' : n + ' carte confermate');
+}
+function undoAllJobs(){
+  const list = qJobs.filter(j => j.status === 'added'); if (!list.length) return;
+  if (!confirm('Annullare le ' + list.length + ' carte aggiunte? Verranno tolte dalla collezione.')) return;
+  for (const j of list) undoJob(j);
+  toast(list.length + ' carte annullate');
 }
 function dropJob(job){ const i = qJobs.indexOf(job); if (i >= 0) qJobs.splice(i, 1); jobDrop(job.id); renderQuick(); }
 
@@ -4294,9 +4315,11 @@ function renderQuick(){
     : qPaused && cnt('queued') ? '<div class="status home-note"><span>' + esc(qPauseMsg || 'Elaborazione in pausa.') + '</span><button class="btn small" type="button" data-q="resume">Riprendi</button></div>' : '';
   const rows = qJobs.filter(j => j.status !== 'undone').sort((a, b) => b.t - a.t);
   let addedShown = 0;
-  box.innerHTML = rows.filter(j => j.status !== 'added' || ++addedShown <= 15).map(j => {
+  // con più carte aggiunte: Conferma tutte (le toglie dalla lista, restano in collezione) o Annulla tutte
+  const all = added > 1 ? '<div class="qall"><button class="btn small" type="button" data-q="undoall">Annulla tutte (' + added + ')</button><button class="btn small solid" type="button" data-q="keepall">Conferma tutte (' + added + ')</button></div>' : '';
+  box.innerHTML = all + rows.filter(j => j.status !== 'added' || ++addedShown <= 15).map(j => {
     const id = esc(j.id);
-    if (j.status === 'added') return '<div class="qrow"><img src="' + esc(j.img) + '" alt=""><div class="body"><div class="nm">' + esc(j.name) + '</div><div class="meta">' + esc(j.setName) + ', ' + esc(j.number) + '/' + esc(j.total) + ', ' + esc(j.cond) + '</div>' + (j.existed ? '<span class="qdup">Ce l’hai già' + (j.had ? ': ne avevi ' + j.had : '') + '</span>' : '') + '</div><div class="acts"><button class="btn small" type="button" data-q="undo" data-id="' + id + '">Annulla</button></div></div>';
+    if (j.status === 'added') return '<div class="qrow"><img src="' + esc(j.img) + '" alt=""><div class="body"><div class="nm">' + esc(j.name) + '</div><div class="meta">' + esc(j.setName) + ', ' + esc(j.number) + '/' + esc(j.total) + ', ' + esc(j.cond) + '</div>' + (j.existed ? '<span class="qdup">Ce l’hai già' + (j.had ? ': ne avevi ' + j.had : '') + '</span>' : '') + '</div><div class="acts two"><button class="btn qic" type="button" data-q="undo" data-id="' + id + '" aria-label="Annulla" title="Annulla"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button><button class="btn solid qic" type="button" data-q="keep" data-id="' + id + '" aria-label="Conferma" title="Conferma"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button></div></div>';
     const label = j.status === 'edges' ? 'Bordi da controllare' : j.status === 'queued' ? (qPausedJob === j.id && qPauseUntil > Date.now() ? 'In pausa, riprendo tra <span class="cdn">' + mmss(qPauseUntil - Date.now()) + '</span>' : j.msg ? esc(j.msg) : 'In coda') : j.status === 'reading' ? 'In lettura…' : j.status === 'review' ? 'Da controllare: ' + esc(j.msg) : 'Errore: ' + esc(j.msg);
     const fix = j.photo ? '<button class="btn small" type="button" data-q="edges" data-id="' + id + '">Correggi bordi</button>' : '';
     const del = '<button class="btn small danger" type="button" data-q="drop" data-id="' + id + '">Elimina</button>';
@@ -4394,6 +4417,9 @@ $('v-quick').addEventListener('click', ev => {
   else if (a === 'resume') resumeQueue();
   else if (a === 'retry' && job){ job.status = 'queued'; job.msg = ''; job.rec = null; jobSave(job); if (qStopReason) resumeQueue(); else { if (!qPauseUntil) qPaused = false; renderQuick(); runQueue(); } }
   else if (a === 'undo' && job) undoJob(job);
+  else if (a === 'keep' && job) dropJob(job);
+  else if (a === 'keepall') keepAllJobs();
+  else if (a === 'undoall') undoAllJobs();
   else if (a === 'drop' && job) dropJob(job);
   else if (a === 'review' && job) reviewJob(job);
   else if (a === 'edges' && job) openQEdit(job);
