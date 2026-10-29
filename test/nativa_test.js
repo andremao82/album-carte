@@ -177,7 +177,7 @@ const pure=new Function(['const dayNow = () => Math.floor(Date.now() / 864e5);',
  $$(t,'#list .item').find(x=>x.textContent.includes('Con immagine')).click(); await wait(50);
  eq(txt(t,'#v-card .cd-ph'),'Foto','tasto Foto (c’è una foto)');
  $(t,'#v-card [data-a="photo"]').click(); await wait(20);
- eq($$(t,'#act-sheet .actbtn').map(b=>b.textContent).join('|'),'Usa la mia foto|Riscatta la foto|Elimina la foto|Annulla','menu Foto con immagine ufficiale (senza foto intera: niente Ritaglia)');
+ eq($$(t,'#act-sheet .actbtn').map(b=>b.textContent).join('|'),'Usa la mia foto|Riscatta con la fotocamera|Scegli dalla galleria|Elimina la foto|Annulla','menu Foto con immagine ufficiale (senza foto intera: niente Ritaglia)');
  $$(t,'#act-sheet .actbtn')[0].click(); await wait(30);
  eq(cat(t).find(e=>e.name==='Con immagine').photoPref,'own','scelta salvata (photoPref = own)');
  eq($(t,'#cd-img').getAttribute('src'),'data:image/jpeg;base64,Q1JPUDI=','ora la scheda mostra la foto'); eq(txt(t,'#v-card .cd-note'),'La tua foto','nota "La tua foto"');
@@ -187,7 +187,7 @@ const pure=new Function(['const dayNow = () => Math.floor(Date.now() / 864e5);',
  $(t,'#v-card [data-a="back"]').click(); await wait(80);
  $$(t,'#list .item').find(x=>x.textContent.includes('Senza immagine')).click(); await wait(50);
  $(t,'#v-card [data-a="photo"]').click(); await wait(20);
- eq($$(t,'#act-sheet .actbtn').map(b=>b.textContent).join('|'),'Ritaglia la foto|Riscatta la foto|Elimina la foto|Annulla','menu Foto senza immagine ufficiale');
+ eq($$(t,'#act-sheet .actbtn').map(b=>b.textContent).join('|'),'Ritaglia la foto|Riscatta con la fotocamera|Scegli dalla galleria|Elimina la foto|Annulla','menu Foto senza immagine ufficiale');
  $$(t,'#act-sheet .actbtn')[0].click(); ok(await until(()=>vis(t,'qedge')),'Ritaglia: editor dei bordi sulla foto intera');
  eq(t.d.getElementById('qe-discard').textContent,'Annulla','editor con "Annulla"'); ok(t.d.getElementById('qe-later').hidden,'senza "Più tardi"');
  $(t,'#qedge [data-qe="ok"]').click(); ok(await until(()=>cat(t).find(e=>e.name==='Senza immagine').photo!=='AAAA-1111'),'nuovo ritaglio: foto con id nuovo');

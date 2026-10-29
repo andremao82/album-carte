@@ -508,6 +508,9 @@ h1{font-weight:800}
 .bar .scan .badge{position:absolute;top:-3px;right:-3px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#D70015;color:#fff;font-size:.72rem;font-weight:800;display:grid;place-items:center;border:2px solid var(--bg)}
 .dock{z-index:20}
 .inquick .dock{display:none}
+/* fotocamera per la foto di una carta della collezione: solo video e scatto, niente coda */
+.qphoto #v-quick .qbtns .btn{visibility:hidden}
+.qphoto #q-stats,.qphoto #q-banner,.qphoto #q-list{display:none}
 /* riflesso visibile solo mentre si inclina la carta col dito */
 .holo.shine::after{opacity:.8}
 .rev.shine::after{opacity:1}
@@ -989,7 +992,7 @@ textarea.note{font:inherit;font-size:.95rem}
 <section id="v-dexd" class="view" hidden></section>
 
 <section id="v-quick" class="view" hidden>
-  <div class="cd-top"><button class="rbtn glass" type="button" data-q="back" aria-label="Indietro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div class="ttl">Scansione rapida</div><div style="width:52px;flex:none"></div></div>
+  <div class="cd-top"><button class="rbtn glass" type="button" data-q="back" aria-label="Indietro"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button><div id="q-title" class="ttl">Scansione rapida</div><div style="width:52px;flex:none"></div></div>
   <div class="qcam" id="q-cam"><video id="q-video" playsinline muted autoplay></video><div class="qframe"></div><svg id="q-live" class="qlive" hidden aria-hidden="true"><polygon points=""/></svg><div id="q-hold" class="qhold" hidden aria-hidden="true"><svg class="ring" viewBox="0 0 44 44"><circle class="bg" cx="22" cy="22" r="18"/><circle class="fg" cx="22" cy="22" r="18" style="stroke-dashoffset:113.1"/></svg><svg class="ok" viewBox="0 0 44 44"><path d="M13.5 22.5l5.5 5.5 11.5-12"/></svg></div><div id="q-hint" class="qhint" hidden></div><button id="q-auto" class="qauto" type="button" data-q="auto" aria-pressed="true">Auto</button><div id="q-msg" class="qmsg" hidden></div></div>
   <div class="qbtns"><button class="btn" type="button" data-q="gallery">Galleria</button><button id="q-shot" class="shutter" type="button" data-q="shot" aria-label="Scatta"></button><button class="btn" type="button" data-q="cam">Fotocamera</button></div>
   <input id="q-file" type="file" accept="image/*" multiple hidden>
@@ -1459,6 +1462,7 @@ function applyPrices(e, c){
 }
 
 /* ---------- navigazione ---------- */
+let qPhotoKey = null;   // fotocamera aperta per la foto di questa carta (non per la Scansione rapida)
 function go(name, keepStack){
   if (!keepStack) navStack.length = 0;
   ['home','scan','cat','set','card','sets','setd','dex','dexd','quick','value'].forEach(n => { $('v-' + n).hidden = n !== name; });
@@ -1473,7 +1477,8 @@ function go(name, keepStack){
   if (name === 'set') renderSettings();
   if (name === 'sets') openSetsTab();
   if (name === 'dex'){ renderDex(); backfillDex(); loadDexNamesAndRefresh(); }
-  if (name !== 'quick') stopCamera();
+  if (name !== 'quick'){ stopCamera(); qPhotoKey = null; }
+  document.body.classList.toggle('qphoto', !!qPhotoKey);
   updateSelBar();
   window.scrollTo(0, 0);
 }
@@ -2868,6 +2873,9 @@ function renderCard(){
   $('v-card').innerHTML = h;
   const im = $('cd-img'), low = imgSrc(prev);
   if (im) im.onerror = () => { if (low && im.getAttribute('src') !== low) im.src = low; else { im.onerror = null; im.remove(); $('cd-tilt').removeAttribute('role'); } };
+  // il riquadro prende le proporzioni dell'immagine (quelle web sono un po' più larghe di 63:88: sotto restava una striscia grigia)
+  if (im){ const tl = $('cd-tilt'), fit = () => { const r = im.naturalWidth / im.naturalHeight; if (r >= 0.6 && r <= 0.86) tl.style.aspectRatio = im.naturalWidth + ' / ' + im.naturalHeight; };
+    im.onload = fit; if (im.complete) fit(); }
   bindTilt($('cd-tilt'), () => { const i = $('cd-img'); if (i) openZoom(i.getAttribute('src'), e.name); });
 }
 // menu della foto: scegliere l'anteprima, ritagliare, scattare o eliminare la foto (come la nativa)
@@ -2877,7 +2885,9 @@ function photoMenu(e){
   if (has && own && e.img) items.push({t:webImageLabel(e), fn:() => { setPhotoPref(key, 'web'); renderCard(); }});
   if (has && !own) items.push({t:'Usa la mia foto', fn:() => { setPhotoPref(key, 'own'); renderCard(); }});
   if (has && photoOrig.has(e.photo)) items.push({t:'Ritaglia la foto', fn:() => cropOwnPhoto(key)});
-  items.push({t:has ? 'Riscatta la foto' : 'Scatta una foto', fn:() => { phKey = key; $('ph-file').click(); }});
+  // fotocamera dell'app (bordi riconosciuti dal vivo, come la Scansione rapida) oppure il selettore di iOS
+  items.push({t:has ? 'Riscatta con la fotocamera' : 'Scatta con la fotocamera', fn:() => pushView('quick', {photo:key})});
+  items.push({t:'Scegli dalla galleria', fn:() => { phKey = key; $('ph-file').click(); }});
   if (has) items.push({t:'Elimina la foto', danger:true, fn:() => { removePhoto(key); renderCard(); }});
   actionSheet(null, items);
 }
@@ -2895,8 +2905,9 @@ async function savePhotoFor(key, src, quad, keepOrig){
 $('ph-file').addEventListener('change', async ev => {
   const f = ev.target.files[0], key = phKey; ev.target.value = ''; if (!f || !key) return;
   let c; try { c = await loadPhoto(f); } catch(err){ toast(err.message || 'Foto non leggibile'); return; }
-  openPhotoEdit(c, detectCard(c).quad, (src, qd) => savePhotoFor(key, src, qd, null), 'Annulla');
+  photoEditFor(key, c);
 });
+const photoEditFor = (key, c) => openPhotoEdit(c, detectCard(c).quad, (src, qd) => savePhotoFor(key, src, qd, null), 'Annulla');
 // foglio di azioni (come i menu della nativa)
 let actItems = [];
 function actionSheet(title, items){
@@ -2976,7 +2987,8 @@ function showView(top){
   if (top.name === 'scan'){ go('scan', true); $('scan-title').textContent = reviewJobId ? 'Controlla la carta' : 'Cerca e aggiungi'; }
   else if (top.name === 'set') go('set', true);
   else if (top.name === 'value'){ go('value', true); renderValue(); }
-  else if (top.name === 'quick'){ go('quick', true); renderQuick(); edgeNext(); if (!top.ctx.nocam){ window.__qcam = true; startCamera(); } else window.__qcam = false; }
+  else if (top.name === 'quick'){ qPhotoKey = top.ctx.photo || null; go('quick', true); $('q-title').textContent = qPhotoKey ? 'Foto della carta' : 'Scansione rapida';
+    if (!qPhotoKey){ renderQuick(); edgeNext(); } if (!top.ctx.nocam){ window.__qcam = true; startCamera(); } else window.__qcam = false; }
   else if (top.name === 'dexd'){ curDexCtx = top.ctx; go('dexd', true); renderDexDetail(); loadDexNamesAndRefresh(); }
   window.scrollTo(0, top.scroll || 0);
 }
@@ -4074,7 +4086,7 @@ async function startCamera(){
   try {
     qStream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:3840}, height:{ideal:2160}}, audio:false});
     const v = $('q-video'); v.srcObject = qStream; await v.play(); m.hidden = true; liveStart();
-  } catch(e){ m.hidden = false; m.textContent = 'Fotocamera non disponibile' + (e && e.name ? ' (' + e.name + ')' : '') + '. Usa "Galleria" per scegliere più foto.'; qStream = null; }
+  } catch(e){ m.hidden = false; m.textContent = 'Fotocamera non disponibile' + (e && e.name ? ' (' + e.name + ')' : '') + (qPhotoKey ? '. Torna indietro e scegli la foto dalla galleria.' : '. Usa "Galleria" per scegliere più foto.'); qStream = null; }
 }
 function stopCamera(){ liveStop(); if (qStream){ qStream.getTracks().forEach(t => t.stop()); qStream = null; } const v = $('q-video'); if (v) v.srcObject = null; }
 
@@ -4159,6 +4171,8 @@ function qShoot(){
   const v = $('q-video'); if (!qStream || !v.videoWidth){ toast('La fotocamera non è pronta'); return; }
   const c = document.createElement('canvas'); c.width = v.videoWidth; c.height = v.videoHeight; c.getContext('2d').drawImage(v, 0, 0);
   $('q-cam').classList.add('flash'); setTimeout(() => $('q-cam').classList.remove('flash'), 140);
+  // foto di una carta: si torna alla scheda e si controllano i bordi trovati (Annulla = nessuna modifica)
+  if (qPhotoKey){ const key = qPhotoKey; liveStop(); popView(); photoEditFor(key, c); return; }
   Object.assign(qLive, {armed:false, miss:0, last:qLive.prev, prev:null, holding:false});
   if (qLive.on){ qLive.doneUntil = Date.now() + AUTO_DONE; if (!qLive.target) qLive.target = qLive.last; liveHint('Scattata!'); }
   qEnqueue(c);
@@ -4348,7 +4362,7 @@ function reviewJob(job){
 // correzione dei bordi in Scansione rapida: si apre da sola per le foto 'edges', oppure con "Correggi bordi"
 let qeJob = null;
 function edgeNext(){
-  if (qeJob || $('v-quick').hidden) return;
+  if (qeJob || $('v-quick').hidden || qPhotoKey) return;
   const job = qJobs.find(j => j.status === 'edges' && j.photo && !j.later);
   if (job) openQEdit(job);
 }
