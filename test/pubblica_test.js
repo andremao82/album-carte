@@ -21,15 +21,17 @@ ok(/CHROME_PATH:\s*\/usr\/bin\/google-chrome/.test(wf),'Chrome del runner per i 
 ok(/node-version:\s*24/.test(wf),'stessa versione di Node del Mac');
 // dove pubblica: progetto esistente, cartella app, ramo del push
 const sito=(rd('strumenti/pacchetto.sh').match(/^SITO="https:\/\/([a-z0-9-]+)\.pages\.dev\/"/m)||[])[1];
-const cmd=(wf.match(/command:\s*(pages deploy[^\n]*)/)||[])[1]||'';
+const cmd=(wf.match(/npx --yes wrangler@4 (pages deploy[^\n]*)/)||[])[1]||'';
 ok(sito==='carte-pokemon-5vf','SITO invariato: '+sito);
 ok(cmd.includes('--project-name='+sito),'pubblica sul progetto di SITO: '+cmd);
 ok(/^pages deploy app\s/.test(cmd),'pubblica la cartella app/');
-ok(cmd.includes('--branch=${{ github.ref_name }}'),'ramo del push (main = produzione)');
-ok(/cloudflare\/wrangler-action@v3/.test(wf),'azione ufficiale di Cloudflare');
-ok(/wranglerVersion:\s*"4"/.test(wf),'wrangler 4 (la 3 dell\'azione non gestisce i token dell\'account)');
+ok(cmd.includes('--branch="$GITHUB_REF_NAME"'),'ramo del push (main = produzione)');
+ok(/npx --yes wrangler@4 pages deploy/.test(wf)&&!/wrangler-action/.test(wf),'wrangler 4 diretto (l\'azione ufficiale installava la vecchia 3.90)');
+ok(/rc=\$\{PIPESTATUS\[0\]\}/.test(wf)&&/exit \$rc/.test(wf),'un caricamento fallito fa fallire il passo');
+ok(/::error title=Caricamento su Cloudflare non riuscito::/.test(wf),'errore di Cloudflare come annotazione');
 // credenziali solo come secret
-ok(/apiToken:\s*\$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/.test(wf)&&/accountId:\s*\$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/.test(wf),'token e account dai secret');
+ok(/CF_TOKEN:\s*\$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/.test(wf)&&/CF_ACCOUNT:\s*\$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/.test(wf),'token e account dai secret');
+ok(/tr -d '\[:space:\]'/.test(wf),'spazi e a capo tolti dai secret (il primo token era stato incollato su due righe)');
 ok(!/[0-9a-f]{32}|[A-Za-z0-9_-]{40}/.test(wf.replace(/\$\{\{[^}]*\}\}/g,'')),'nessun token o ID scritto nel file');
 // il file pubblicato è già pronto: il profilo punta al sito anche senza pacchetto.sh
 ok(rd('app/carte.mobileconfig').includes('<string>https://'+sito+'.pages.dev/</string>'),'profilo già puntato al sito');

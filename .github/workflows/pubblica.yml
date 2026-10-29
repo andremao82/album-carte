@@ -28,9 +28,18 @@ jobs:
           bash strumenti/setup.sh
           bash strumenti/test.sh
       - name: Carica su Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          wranglerVersion: "4"
-          command: pages deploy app --project-name=carte-pokemon-5vf --branch=${{ github.ref_name }} --commit-dirty=true
+        # wrangler 4 direttamente (l'azione ufficiale installava la vecchia 3.90). Spazi e a capo tolti dai secret;
+        # se il caricamento fallisce, l'errore di Cloudflare diventa un'annotazione leggibile anche senza i log.
+        env:
+          CF_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CF_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          export CLOUDFLARE_API_TOKEN="$(printf %s "$CF_TOKEN" | tr -d '[:space:]')"
+          export CLOUDFLARE_ACCOUNT_ID="$(printf %s "$CF_ACCOUNT" | tr -d '[:space:]')"
+          set +e
+          npx --yes wrangler@4 pages deploy app --project-name=carte-pokemon-5vf --branch="$GITHUB_REF_NAME" --commit-dirty=true 2>&1 | tee deploy.log
+          rc=${PIPESTATUS[0]}
+          if [ $rc -ne 0 ]; then
+            echo "::error title=Caricamento su Cloudflare non riuscito::$(grep -iE 'error|✘|code' deploy.log | head -6 | tr '\n' ' ' | cut -c1-600)"
+          fi
+          exit $rc
