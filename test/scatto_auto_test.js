@@ -55,7 +55,11 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     ok(samp.length>=20,'campioni a ogni fotogramma: '+samp.length);
     ok(distinct>=samp.length*0.6,'l\'anello cambia quasi a ogni fotogramma ('+distinct+' valori diversi su '+samp.length+'), non a scatti ogni ricerca');
     const steps=offs.slice(1).map((v,i)=>offs[i]-v), maxStep=Math.max(...steps);
-    ok(steps.every(d=>d>=-0.01)&&maxStep<8,'l\'anello avanza sempre, con passi piccoli (massimo '+maxStep.toFixed(1)+' su 113)');
+    // passi proporzionati al tempo del fotogramma (su una macchina lenta i fotogrammi sono più lunghi, il movimento resta fluido):
+    // un anello "a scatti" farebbe passi grandi dopo fotogrammi brevi
+    const ts=samp.filter(s=>!isNaN(s.off)).map(s=>s.t), dts=ts.slice(1).map((v,i)=>v-ts[i]);
+    const vel=(offs[0]-offs[offs.length-1])/(ts[ts.length-1]-ts[0]), fuori=steps.filter((d,i)=>d>vel*dts[i]*1.8+2).length;
+    ok(steps.every(d=>d>=-0.01)&&fuori===0,'l\'anello avanza sempre, con passi proporzionati al tempo (massimo '+maxStep.toFixed(1)+' su 113, '+fuori+' fuori misura)');
     const PT=s=>s.pts.split(' ').map(p=>p.split(',').map(Number)), jumps=samp.slice(1).map((s,i)=>Math.max(...PT(s).map((p,j)=>Math.hypot(p[0]-PT(samp[i])[j][0],p[1]-PT(samp[i])[j][1]))));
     ok(Math.max(...jumps)<6,'il riquadro non salta (spostamento massimo fra due fotogrammi '+Math.max(...jumps).toFixed(1)+' px)');
     ok(await rows()===0,'non scatta prima del tempo di attesa');
