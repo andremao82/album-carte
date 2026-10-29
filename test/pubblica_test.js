@@ -26,6 +26,7 @@ ok(cmd.includes('--project-name='+sito),'pubblica sul progetto di SITO: '+cmd);
 ok(/^pages deploy app\s/.test(cmd),'pubblica la cartella app/');
 ok(cmd.includes('--branch=${{ github.ref_name }}'),'ramo del push (main = produzione)');
 ok(/cloudflare\/wrangler-action@v3/.test(wf),'azione ufficiale di Cloudflare');
+ok(/wranglerVersion:\s*"4"/.test(wf),'wrangler 4 (la 3 dell\'azione non gestisce i token dell\'account)');
 // credenziali solo come secret
 ok(/apiToken:\s*\$\{\{ secrets\.CLOUDFLARE_API_TOKEN \}\}/.test(wf)&&/accountId:\s*\$\{\{ secrets\.CLOUDFLARE_ACCOUNT_ID \}\}/.test(wf),'token e account dai secret');
 ok(!/[0-9a-f]{32}|[A-Za-z0-9_-]{40}/.test(wf.replace(/\$\{\{[^}]*\}\}/g,'')),'nessun token o ID scritto nel file');
