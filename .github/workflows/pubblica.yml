@@ -1,0 +1,35 @@
+# Pubblicazione automatica su Cloudflare Pages (dal 29/10/2026): a ogni push esegue tutti i test e, se passano,
+# carica app/ sul progetto esistente carte-pokemon-5vf (stesso indirizzo = stessi dati sul telefono).
+# Push su main → sito online; push su un altro ramo → solo anteprima (https://<ramo>.carte-pokemon-5vf.pages.dev).
+# Secret del repository (Settings → Secrets and variables → Actions): CLOUDFLARE_API_TOKEN (permesso
+# "Cloudflare Pages: Edit") e CLOUDFLARE_ACCOUNT_ID.
+name: Pubblica su Cloudflare Pages
+
+on:
+  push:
+  workflow_dispatch:
+
+concurrency:
+  group: pubblica-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pubblica:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Test
+        env:
+          CHROME_PATH: /usr/bin/google-chrome
+        run: |
+          bash strumenti/setup.sh
+          bash strumenti/test.sh
+      - name: Carica su Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: pages deploy app --project-name=carte-pokemon-5vf --branch=${{ github.ref_name }} --commit-dirty=true

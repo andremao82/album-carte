@@ -1,5 +1,6 @@
 // Passaggio a Claude Code sul Mac (21/10/2026): la cartella deve funzionare ovunque (Mac o Linux), senza GitHub,
-// e il rilascio manuale deve restare sullo stesso progetto Cloudflare (stesso dominio = stessi dati sul telefono).
+// e il rilascio deve restare sullo stesso progetto Cloudflare (stesso dominio = stessi dati sul telefono).
+// Dal 29/10/2026 la pubblicazione è automatica da GitHub Actions (vedi pubblica_test.js).
 const fs=require('fs'),path=require('path'),assert=require('assert');
 const L=require('./percorsi'), R=L.ROOT;
 let n=0; const ok=(c,m)=>{assert.ok(c,m);n++;};
@@ -27,13 +28,13 @@ ok(fs.readdirSync(path.join(R,'strumenti','storico')).some(f=>f.startsWith('patc
 const cm=rd('CLAUDE.md');
 for(const [t,m] of [['LEGGIMI.md','rimando alla nota'],['strumenti/test.sh','test dopo ogni modifica'],['test nuovo','un test per funzione nuova'],['mai riscrivere','modifiche mirate'],['screenshot/','controllo a vista'],['compravendita','niente compravendita'],['avvisi di prezzo','niente avvisi di prezzo'],['ambigua','chiedere se ambiguo'],['italiano','lingua'],['non hai potuto verificare','dichiarare il non verificato'],['carte-pokemon-5vf','dominio dei dati']]) ok(cm.includes(t),'CLAUDE.md: '+m);
 ok(!/netlify/i.test(cm),'CLAUDE.md senza Netlify');
-// rilascio manuale sul progetto esistente, nessun GitHub
+// rilascio sul progetto esistente
 const sito=(rd('strumenti/pacchetto.sh').match(/^SITO="https:\/\/([a-z0-9-]+)\.pages\.dev\/"/m)||[])[1];
 ok(sito==='carte-pokemon-5vf','SITO resta il progetto esistente: '+sito);
-ok(!ex('.github')&&!ex('wrangler.toml'),'niente GitHub Actions né wrangler');
+ok(!ex('wrangler.toml'),'niente wrangler.toml');
 ok(rd('strumenti/pacchetto.sh').includes('Z="$R/album-carte-pwa.zip"')&&L.ZIP===path.join(R,'album-carte-pwa.zip'),'zip nella cartella del progetto');
-for(const [t,m] of [['carte-pokemon-5vf','progetto Cloudflare'],['Create deployment','come caricare lo zip'],['pacchetto.sh','crea lo zip'],['git status','controllo all\'avvio'],['niente rilascio con test falliti','test prima del rilascio']]) ok(cm.includes(t),'CLAUDE.md: '+m);
-ok(!/pull request|GitHub Actions|merge/i.test(cm),'CLAUDE.md senza flusso GitHub');
+for(const [t,m] of [['carte-pokemon-5vf','progetto Cloudflare'],['pacchetto.sh','zip di riserva'],['git status','controllo all\'avvio'],['niente rilascio con test falliti','test prima del rilascio']]) ok(cm.includes(t),'CLAUDE.md: '+m);
+ok(!/pull request/i.test(cm),'CLAUDE.md senza pull request');
 // Mac: browser di sistema e timeout facoltativo
 const br=require(path.join(L.SHOT,'browser.js'));
 ok(typeof br.launch==='function'&&typeof br.trovaBrowser==='function','browser.js esporta launch e trovaBrowser');
