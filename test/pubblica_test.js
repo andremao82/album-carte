@@ -16,6 +16,7 @@ ok(/workflow_dispatch:/.test(wf),'avviabile a mano');
 const iSetup=wf.indexOf('bash strumenti/setup.sh'), iTest=wf.indexOf('bash strumenti/test.sh'), iDeploy=wf.indexOf('pages deploy');
 ok(iSetup>0&&iTest>iSetup&&iDeploy>iTest,'setup → test → pubblicazione, in quest\'ordine');
 ok(!/continue-on-error|\|\|\s*true/.test(wf),'un test fallito ferma la pubblicazione');
+ok(rd('strumenti/test.sh').includes('::error title=FALLITO $f::'),'test.sh segnala su GitHub il test fallito (annotazione leggibile senza log)');
 ok(/CHROME_PATH:\s*\/usr\/bin\/google-chrome/.test(wf),'Chrome del runner per i test con Chromium vero');
 ok(/node-version:\s*24/.test(wf),'stessa versione di Node del Mac');
 // dove pubblica: progetto esistente, cartella app, ramo del push

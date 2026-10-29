@@ -16,7 +16,10 @@ for f in *_test.js; do
   # fallisce se il test si interrompe (eccezione, verifica non superata) o se segnala errori della pagina.
   # Non si cercano parole come "TypeError" nel testo: alcuni test simulano apposta errori di rete.
   err=$(echo "$out" | grep -E "errori" | grep -v "nessuno")
-  if [ $rc -ne 0 ] || [ -n "$err" ]; then echo "FALLITO  $f"; echo "$out" | tail -8; fail=1; else echo "ok       $f"; fi
+  if [ $rc -ne 0 ] || [ -n "$err" ]; then echo "FALLITO  $f"; echo "$out" | tail -8; fail=1
+    # su GitHub Actions: annotazione leggibile anche dall'API senza accesso ai log
+    [ -n "$GITHUB_ACTIONS" ] && echo "::error title=FALLITO $f::$( (echo "$out" | grep -E "NON SUPERATO|AssertionError|Error:" || echo "$out" | tail -3) | head -3 | tr '\n' ' ' | cut -c1-500)"
+  else echo "ok       $f"; fi
 done
 [ $n -eq 0 ] && { echo "nessun test trovato"; exit 1; }
 [ $fail -eq 0 ] && echo "TUTTI I TEST SUPERATI ($n)" || { echo "CI SONO TEST FALLITI"; exit 1; }

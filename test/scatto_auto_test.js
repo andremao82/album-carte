@@ -56,12 +56,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     ok(distinct>=samp.length*0.6,'l\'anello cambia quasi a ogni fotogramma ('+distinct+' valori diversi su '+samp.length+'), non a scatti ogni ricerca');
     const steps=offs.slice(1).map((v,i)=>offs[i]-v), maxStep=Math.max(...steps);
     // passi proporzionati al tempo del fotogramma (su una macchina lenta i fotogrammi sono più lunghi, il movimento resta fluido):
-    // un anello "a scatti" farebbe passi grandi dopo fotogrammi brevi
+    // un anello "a scatti" farebbe passi grandi dopo fotogrammi brevi (limite 8 come prima, più largo solo dopo un fotogramma lungo)
     const ts=samp.filter(s=>!isNaN(s.off)).map(s=>s.t), dts=ts.slice(1).map((v,i)=>v-ts[i]);
-    const vel=(offs[0]-offs[offs.length-1])/(ts[ts.length-1]-ts[0]), fuori=steps.filter((d,i)=>d>vel*dts[i]*1.8+2).length;
+    const vel=(offs[0]-offs[offs.length-1])/(ts[ts.length-1]-ts[0]), fuori=steps.filter((d,i)=>d>Math.max(8,vel*dts[i]*1.8+2)).length;
     ok(steps.every(d=>d>=-0.01)&&fuori===0,'l\'anello avanza sempre, con passi proporzionati al tempo (massimo '+maxStep.toFixed(1)+' su 113, '+fuori+' fuori misura)');
     const PT=s=>s.pts.split(' ').map(p=>p.split(',').map(Number)), jumps=samp.slice(1).map((s,i)=>Math.max(...PT(s).map((p,j)=>Math.hypot(p[0]-PT(samp[i])[j][0],p[1]-PT(samp[i])[j][1]))));
-    ok(Math.max(...jumps)<6,'il riquadro non salta (spostamento massimo fra due fotogrammi '+Math.max(...jumps).toFixed(1)+' px)');
+    // limite per fotogramma da 20 ms, più largo se il fotogramma dura di più (macchina lenta)
+    ok(jumps.every((d,i)=>d<6*Math.max(1,(samp[i+1].t-samp[i].t)/20)),'il riquadro non salta (spostamento massimo fra due fotogrammi '+Math.max(...jumps).toFixed(1)+' px)');
     ok(await rows()===0,'non scatta prima del tempo di attesa');
     let shot=false; for(let i=0;i<25&&!shot;i++){ await wait(100); shot=(await rows())===1; }
     ok(shot,'scattata da sola dopo circa 1,2 s di carta ferma');
@@ -104,13 +105,16 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     await page.evaluate(()=>{ window.__scena.card='a'; window.__scena.dx=-120; window.__slide=setInterval(()=>{ window.__scena.dx=Math.min(120,window.__scena.dx+30); },150); });
     let on=false; for(let i=0;i<30&&!on;i++){ await wait(50); on=(await st()).live; }
     ok(on,'riquadro sulla carta che si muove');
-    const sl=await page.evaluate(()=>new Promise(res=>{ const out=[], t0=performance.now(), pg=document.querySelector('#q-live polygon');
-      const f=()=>{ const v=pg.getAttribute('points'); if(v) out.push(v.split(' ').map(p=>p.split(',').map(Number))); if(performance.now()-t0<700) requestAnimationFrame(f); else res(out); }; requestAnimationFrame(f); }));
+    const slR=await page.evaluate(()=>new Promise(res=>{ const out=[], t0=performance.now(), pg=document.querySelector('#q-live polygon');
+      const f=()=>{ const v=pg.getAttribute('points'); if(v) out.push({t:performance.now()-t0,q:v.split(' ').map(p=>p.split(',').map(Number))}); if(performance.now()-t0<700) requestAnimationFrame(f); else res(out); }; requestAnimationFrame(f); }));
     await page.evaluate(()=>clearInterval(window.__slide));
+    const sl=slR.map(s=>s.q);
     const jm=sl.slice(1).map((q,i)=>Math.max(...q.map((p,j)=>Math.hypot(p[0]-sl[i][j][0],p[1]-sl[i][j][1])))), tot=Math.hypot(sl[sl.length-1][0][0]-sl[0][0][0],sl[sl.length-1][0][1]-sl[0][0][1]);
     // la scena salta di 30 px del video (~15 px a schermo) ogni 150 ms: il riquadro deve muoversi a piccoli passi
     ok(tot>25,'il riquadro segue la carta ('+tot.toFixed(0)+' px)');
-    ok(Math.max(...jm)<9,'passo massimo fra due fotogrammi '+Math.max(...jm).toFixed(1)+' px (la scena salta di ~15 px)');
+    // smorzamento di ~70 ms con dt limitato a 100 ms: in un fotogramma il riquadro copre al massimo il 76% del salto, anche su
+    // una macchina lenta (GitHub: 9,1 px; Mac: ~4 px); senza smorzamento farebbe tutto il salto in un colpo (~17 px)
+    ok(Math.max(...jm)<13,'passo massimo fra due fotogrammi '+Math.max(...jm).toFixed(1)+' px (la scena salta di ~15 px)');
     ok(!errs.length,'nessun errore nella pagina '+errs.join(' | '));
     console.log('scatto_auto: '+checks+' controlli superati, errori: nessuno');
     await browser.close(); process.exit(0);
