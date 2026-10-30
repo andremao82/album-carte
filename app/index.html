@@ -740,6 +740,8 @@ textarea.note{font:inherit;font-size:.95rem}
 /* scheda carta */
 .cd-top .rbtn .fill{fill:currentColor;stroke:none}
 .cd-stage{padding:10px 0 0}
+#cd-sw{margin:0 -16px;padding:0 16px;overflow-x:clip}
+#cd-mv{touch-action:pan-y}
 .cd-stage::before{width:220px;height:220px;background:var(--accent-soft);filter:blur(50px)}
 .cd-card{width:230px;max-width:66%;border-radius:10px;box-shadow:0 18px 36px var(--shadow)}
 .cd-card .nn{font-size:.95rem}
@@ -2834,13 +2836,14 @@ function imgNote(e){
   return '';
 }
 function renderCard(){
+  syncCardList();
   const e = entryByKey(cardKey);
   if (!e){ leaveCard(); return; }
   const u = unit(e), info = priceInfo(e.pr, e.variant), prev = previewURL(e), art = imgSrc(hiImg(prev) || prev), note = imgNote(e);
   const condName = (CONDS.find(c => c[0] === e.cond) || [0, e.cond])[1];
   let h = '<div class="cd-top"><button class="rbtn glass" type="button" data-a="back" aria-label="Indietro">' + ICON_BACK + '</button><div class="ttl"></div>' +
     '<button class="rbtn glass" type="button" data-a="menu" aria-label="Altre azioni">' + ICON_MORE + '</button></div>' +
-    '<div class="cd-stage"><div id="cd-tilt" class="cd-card art' + holoCls(e) + '" data-ini="' + esc(iniOf(e.name)) + '"' + (art ? ' role="button" tabindex="0" aria-label="Ingrandisci l’immagine"' : '') + '>' +
+    '<div id="cd-sw"><div id="cd-mv">' + '<div class="cd-stage"><div id="cd-tilt" class="cd-card art' + holoCls(e) + '" data-ini="' + esc(iniOf(e.name)) + '"' + (art ? ' role="button" tabindex="0" aria-label="Ingrandisci l’immagine"' : '') + '>' +
       (e.number ? '<em class="nn">' + esc(e.number) + '</em>' : '') + (art ? '<img id="cd-img" src="' + esc(art) + '" alt="' + esc(e.name) + '">' : '') + '</div></div>' +
     (reduceMotion() ? '' : '<p class="cd-hint">Trascina il dito sulla carta per inclinarla</p>') +
     (note ? '<p class="cd-note">' + esc(note) + '</p>' : '') +
@@ -2869,7 +2872,7 @@ function renderCard(){
       (e.tt ? '<div class="dr"><span>Tipo</span><em>' + esc(e.tt) + '</em></div>' : '') +
       '<div class="dr"><span>Aggiunta il</span><em>' + fmtDate(e.added) + '</em></div></div>'; }
   h += lbl2('Note') + '<textarea id="cd-note" class="note" placeholder="Una nota su questa carta">' + esc(e.note || '') + '</textarea>' +
-    '<button class="btn danger delc" type="button" data-a="del">Elimina carta</button>';
+    '<button class="btn danger delc" type="button" data-a="del">Elimina carta</button></div></div>';
   $('v-card').innerHTML = h;
   const im = $('cd-img'), low = imgSrc(prev);
   if (im) im.onerror = () => { if (low && im.getAttribute('src') !== low) im.src = low; else { im.onerror = null; im.remove(); $('cd-tilt').removeAttribute('role'); } };
@@ -2995,6 +2998,7 @@ function showView(top){
 function pushView(name, ctx){
   const prev = navStack[navStack.length - 1];
   if (prev) prev.scroll = window.scrollY; else { navScroll = window.scrollY; navBase = currentTab(); }
+  if (name === 'card' && !ctx.list && openFrom && openFrom.includes(ctx.key)) ctx.list = openFrom;
   const top = {name, ctx, scroll:0}; navStack.push(top);
   try { history.pushState({d:navStack.length}, ''); } catch(err){}
   showView(top);
@@ -3007,6 +3011,79 @@ function doPop(){
 function popView(){ if (navStack.length && history.state && history.state.d) history.back(); else doPop(); }
 function openCard(key){ if (entryByKey(key)) pushView('card', {key}); }
 function leaveCard(){ popView(); }
+/* scorrere di lato nella scheda carta (30/10/2026): carta dopo (verso sinistra) o prima (verso destra) nell'elenco da cui è
+   stata aperta, con i filtri e l'ordinamento di quel momento. La scheda segue il dito; ai capi dell'elenco rimbalza.
+   Non sull'immagine (inclinazione), non mentre si scrive nel prezzo o nella nota, non dal bordo sinistro (gesto Indietro). */
+let openFrom = null, swEat = false;
+document.addEventListener('click', ev => {
+  const b = ev.target.closest && ev.target.closest('[data-open]'); if (!b || !b.parentElement) return;
+  openFrom = [...new Set([...b.parentElement.children].filter(x => x.dataset && x.dataset.open).map(x => x.dataset.open))];
+  setTimeout(() => { openFrom = null; });
+}, true);
+const cardTop = () => { const t = navStack[navStack.length - 1]; return t && t.name === 'card' ? t : null; };
+function syncCardList(){
+  const t = cardTop(); if (!t || t.ctx.key === cardKey) return;
+  const l = t.ctx.list, i = l ? l.indexOf(t.ctx.key) : -1;
+  if (i >= 0 && !l.includes(cardKey)) l[i] = cardKey;
+  t.ctx.key = cardKey;
+}
+function cardNeighbor(dir){
+  const t = cardTop(), l = t && t.ctx.list; if (!l) return null;
+  let i = l.indexOf(cardKey); if (i < 0) return null;
+  for (i += dir; i >= 0 && i < l.length; i += dir) if (l[i] !== cardKey && entryByKey(l[i])) return l[i];
+  return null;
+}
+const cardEditing = () => { const a = document.activeElement; return !!a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName) && $('v-card').contains(a); };
+const hScrolls = (el, stop) => { for (; el && el !== stop; el = el.parentElement) if (el.scrollWidth > el.clientWidth + 1 && /auto|scroll/.test(getComputedStyle(el).overflowX)) return true; return false; };
+const swRubber = dx => Math.sign(dx) * Math.min(90, Math.abs(dx) * 0.35);
+const sw = {on:false, drag:false, busy:false, id:null, x:0, y:0, dx:0, vx:0, t:0};
+function swSet(x, ms, ease){
+  const m = $('cd-mv'); if (!m) return;
+  m.style.transition = ms ? 'transform ' + ms + 'ms ' + (ease || 'ease-out') : 'none';
+  m.style.transform = x ? 'translateX(' + x.toFixed(1) + 'px)' : '';
+}
+function cardStep(key, dir){
+  const t = cardTop(); if (!t) return;
+  const show = () => { cardKey = t.ctx.key = key; renderCard(); window.scrollTo(0, 0); };
+  if (reduceMotion()){ swSet(0); show(); return; }
+  const W = window.innerWidth; sw.busy = true;
+  swSet(-dir * W, 160, 'ease-in');
+  setTimeout(() => {
+    if (cardTop() !== t){ sw.busy = false; return; }
+    show(); swSet(dir * W, 0); void ($('cd-mv') || {}).offsetWidth; swSet(0, 220, 'ease-out');
+    setTimeout(() => { sw.busy = false; if (cardTop() === t) swSet(0); }, 240);
+  }, 170);
+}
+$('v-card').addEventListener('pointerdown', ev => {
+  sw.on = false;
+  if (sw.busy || ev.button > 0 || ev.isPrimary === false) return;
+  const t = ev.target, mv = $('cd-mv');
+  if (!mv || !mv.contains(t) || t.closest('#cd-tilt, input, textarea, select') || cardEditing() || hScrolls(t, mv) || ev.clientX < 20) return;
+  Object.assign(sw, {on:true, drag:false, id:ev.pointerId, x:ev.clientX, y:ev.clientY, dx:0, vx:0, t:ev.timeStamp});
+});
+$('v-card').addEventListener('pointermove', ev => {
+  if (!sw.on || ev.pointerId !== sw.id) return;
+  const dx = ev.clientX - sw.x, dy = ev.clientY - sw.y;
+  if (!sw.drag){
+    if (Math.abs(dy) > 10 && Math.abs(dy) >= Math.abs(dx)){ sw.on = false; return; }
+    if (Math.abs(dx) < 10 || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+    sw.drag = true; try { $('v-card').setPointerCapture(ev.pointerId); } catch(err){}
+  }
+  sw.vx = (dx - sw.dx) / Math.max(1, ev.timeStamp - sw.t); sw.t = ev.timeStamp; sw.dx = dx;
+  swSet(cardNeighbor(dx < 0 ? 1 : -1) ? dx : swRubber(dx));
+});
+function swEnd(ev){
+  if (!sw.on || ev.pointerId !== sw.id) return;
+  sw.on = false; if (!sw.drag) return;
+  sw.drag = false; swEat = true; setTimeout(() => { swEat = false; }, 300);
+  const dir = sw.dx < 0 ? 1 : -1, next = cardNeighbor(dir), W = window.innerWidth;
+  const fast = Math.abs(sw.dx) > 30 && Math.abs(sw.vx) > 0.5 && Math.sign(sw.vx) === Math.sign(sw.dx);
+  if (ev.type === 'pointerup' && next && (Math.abs(sw.dx) > W * 0.25 || fast)) cardStep(next, dir);
+  else swSet(0, 320, next ? 'ease-out' : 'cubic-bezier(.34,1.56,.64,1)');   // ai capi dell'elenco: rimbalzo
+}
+['pointerup', 'pointercancel'].forEach(n => $('v-card').addEventListener(n, swEnd));
+// il tocco che chiude un trascinamento non preme il pulsante sotto il dito
+$('v-card').addEventListener('click', ev => { if (swEat){ swEat = false; ev.stopPropagation(); ev.preventDefault(); } }, true);
 /* ---------- storico della carta: punti del grafico, periodo, tutto schermo ---------- */
 let cardRange = 0;
 const CARD_RANGES = [[30, '1 mese'], [90, '3 mesi'], [365, '1 anno'], [0, 'Tutto']];
