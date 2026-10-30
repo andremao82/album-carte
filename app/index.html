@@ -249,8 +249,8 @@ textarea.note{width:100%;min-height:84px;padding:14px 18px;border-radius:18px;bo
 .undo .lnk{font-size:1rem}
 
 /* ---- Scansione rapida ---- */
-/* barra con il tasto Indietro sempre in alto; l'ombra piena copre anche la zona dell'ora */
-#v-quick .cd-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);margin:0 -16px 12px;padding:4px 16px 6px;box-shadow:0 calc(-1 * env(safe-area-inset-top,0px)) 0 var(--bg)}
+/* barra con il tasto Indietro sempre in alto in ogni pagina; l'ombra piena copre anche la zona dell'ora */
+.view > .cd-top{position:sticky;top:env(safe-area-inset-top,0px);z-index:6;background:var(--bg);margin:0 -16px 12px;padding:4px 16px 6px;box-shadow:0 calc(-1 * env(safe-area-inset-top,0px)) 0 var(--bg)}
 .qall{display:flex;gap:8px;margin:0 0 10px}
 .qall .btn{flex:1;min-width:0;padding:0 10px}
 /* righe aggiunte: Annulla (✕) e Conferma (✓) come pulsanti tondi, affiancati */
