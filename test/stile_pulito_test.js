@@ -85,6 +85,35 @@ const {launch}=require(require('./percorsi').SHOT+'/browser.js'), assert=require
     await page.evaluate(()=>document.querySelector('#v-card [data-a="chfull"]').click()); await new Promise(r=>setTimeout(r,300));
     const f=await page.evaluate(()=>{ const svg=document.querySelector('#chfull svg.vch'); return {gr:[...svg.querySelectorAll('line.gr')].filter(l=>getComputedStyle(l).display!=='none').length, t:[...svg.querySelectorAll(':scope > text')].filter(t=>getComputedStyle(t).display!=='none').length, all:svg.querySelectorAll(':scope > text').length}; });
     ok(f.gr>=3&&f.t===f.all,T+'tutto schermo: livelli e date tutti visibili ('+f.gr+' linee, '+f.t+'/'+f.all+' scritte)');
+    // ---- Progressi, Pokédex e Trend (stesso stile, seconda richiesta del 07/11/2026)
+    await page.goto(require('./percorsi').APP_URL); await new Promise(r=>setTimeout(r,800));
+    const nav=async go=>{ await page.evaluate(g=>document.querySelector('nav button[data-go="'+g+'"]').click(),go); await new Promise(r=>setTimeout(r,400)); };
+    await nav('sets');
+    const s=await page.evaluate(()=>{ const q=s=>document.querySelector(s), cs=s=>getComputedStyle(q(s));
+      return {sum:cs('#v-sets .ssum').backgroundColor, scope:cs('#v-sets .ssum .pb[aria-pressed="true"]').backgroundColor, scopeW:cs('#v-sets .ssum .pb[aria-pressed="true"]').fontWeight,
+        filt:cs('#ss-filter .pb[aria-pressed="true"]').backgroundColor, row:cs('#sets-list .sprow').backgroundColor, rowB:cs('#sets-list .sprow').borderBottomWidth,
+        num:cs('#v-sets .ssn b').color, ink:getComputedStyle(document.body).color, ring:cs('#v-sets .ring2 .rf').strokeWidth}; });
+    ok(clear(s.sum),T+'Progressi: riepilogo senza riquadro');
+    ok(clear(s.scope)&&+s.scopeW>=700,T+'Progressi: ambito scelto a parole, in grassetto');
+    ok(clear(s.filt),T+'Progressi: filtro scelto senza pillola gialla');
+    ok(clear(s.row)&&s.rowB!=='0px',T+'Progressi: righe dei set senza riquadro, con linea sotto');
+    ok(s.num===s.ink,T+'Progressi: numero delle carte del colore del testo, non giallo ('+s.num+')');
+    ok(parseFloat(s.ring)<10,T+'Progressi: anello più sottile ('+s.ring+')');
+    await nav('dex');
+    const x=await page.evaluate(()=>{ const q=s=>document.querySelector(s), cs=s=>getComputedStyle(q(s));
+      return {tab:cs('#v-dex .dtabs [aria-pressed="true"]').backgroundColor, tabW:cs('#v-dex .dtabs [aria-pressed="true"]').fontWeight, gen:cs('#v-dex .pbrow .pb[aria-pressed="true"]').backgroundColor,
+        num:cs('#v-dex .dstat .n b').color, ink:getComputedStyle(document.body).color, pc:cs('#v-dex .dstat .pc').backgroundColor,
+        own:q('#v-dex .dcell.own')?getComputedStyle(q('#v-dex .dcell.own')).boxShadow:'none', cell:cs('#v-dex .dcell').backgroundColor}; });
+    ok(clear(x.tab)&&+x.tabW>=700,T+'Pokédex: scheda scelta a parole, in grassetto');
+    ok(clear(x.gen),T+'Pokédex: generazione scelta senza pillola gialla');
+    ok(x.num===x.ink&&clear(x.pc),T+'Pokédex: numero del colore del testo, percentuale senza pillola');
+    ok(x.own==='none'&&clear(x.cell),T+'Pokédex: caselle senza riquadro né bordo giallo');
+    await nav('home'); await page.evaluate(()=>document.querySelector('#v-home [data-a="value"]').click()); await new Promise(r=>setTimeout(r,400));
+    const v=await page.evaluate(()=>{ const q=s=>document.querySelector(s), cs=s=>getComputedStyle(q(s));
+      return {seg:cs('#v-value .seg [aria-pressed="true"]').backgroundColor, pnl:[...document.querySelectorAll('#v-value .pnl')].map(p=>getComputedStyle(p).backgroundColor), side:cs('#v-value .vside').borderTopWidth}; });
+    ok(clear(v.seg),T+'Trend: periodo scelto senza pillola gialla');
+    ok(v.pnl.length>=2&&v.pnl.every(clear),T+'Trend: riepilogo, grafico ed elenchi senza riquadri');
+    ok(v.side==='0px',T+'Trend: salite / scese / ferme senza linee');
     await page.close();
   }
   } finally { await browser.close(); }

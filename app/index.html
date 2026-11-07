@@ -1005,6 +1005,55 @@ textarea.note{font:inherit;font-size:.95rem}
 .vch .sd{fill:var(--ink)}
 .chfull .vch .gr,.chfull .vch text.mid{display:inline}
 .chfull .vch .gr{stroke-opacity:.18}
+/* stile pulito anche per Progressi, dettaglio del set, Pokédex e Trend (07/11/2026) */
+#v-sets .sfield,#v-dex .sfield{background:none;border-radius:0;padding:0 2px;border-bottom:1px solid var(--line)}
+#ss-filter,#v-sets .ssum .pbrow,#v-dex .pbrow,#v-dex .dtabs,#v-setd .seg,#v-value .seg{gap:20px}
+#ss-filter .pb,#v-sets .ssum .pb,#v-dex .pbrow .pb,#v-dex .dtools .pb,#v-dex .dtabs button,#v-setd .seg button,#v-value .seg button{flex:none;min-height:34px;padding:4px 0;border:0;border-radius:0;background:none;color:var(--muted);font-weight:500;font-size:.92rem}
+#ss-filter .pb[aria-pressed=true],#v-sets .ssum .pb[aria-pressed=true],#v-dex .pbrow .pb[aria-pressed=true],#v-dex .dtabs button[aria-pressed=true],#v-setd .seg button[aria-pressed=true],#v-value .seg button[aria-pressed=true]{background:none;border:0;color:var(--ink);font-weight:700}
+#v-dex .dtools .pb{color:var(--ink)}
+/* Progressi */
+#v-sets .ssum{background:none;padding:0;margin-top:0;border-radius:0}
+#v-sets .ssn b{font-weight:700;color:var(--ink);letter-spacing:-.03em}
+#v-sets .ssn span{font-weight:500}
+#v-sets .ssc{font-size:.9rem}
+#v-sets .ring2 .rb,#v-sets .ring2 .rf{stroke-width:6}
+#v-sets .ring2 b{font-weight:600;font-size:.95rem}
+#v-sets .sprow{background:none;border-radius:0;padding:12px 0;margin:0;border-bottom:1px solid var(--line)}
+#v-sets .sprow .logo{background:none}
+#v-sets .sprow .t1 b{font-weight:500}
+#btn-browse{background:none;border:0;font-weight:600;margin-top:18px!important}
+/* dettaglio del set e dei Pokémon / artisti */
+#v-setd .sdh .sdr b{font-weight:600}
+#v-setd .sdh .ini{background:var(--surface2);border:0;color:var(--muted);font-weight:600}
+#v-setd .tbar.big,#v-dex .tbar.big{height:4px}
+#v-setd .scell .im,#v-dexd .scell .im{border-radius:6px}
+#v-setd .scell .qb,#v-dexd .scell .qb{background:color-mix(in srgb,var(--bg) 80%,transparent);color:var(--ink);font-weight:600}
+#v-setd .scell.own .n,#v-dexd .scell.own .n{color:var(--ink);font-weight:600}
+#v-setd .elist .item,#v-dexd .elist .item{background:none;border:0;border-radius:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0}
+/* Pokédex */
+#v-dex .dtabs{margin-bottom:22px}
+#v-dex .dstat .n b{font-weight:700;color:var(--ink);letter-spacing:-.03em}
+#v-dex .dstat .n span{font-weight:500}
+#v-dex .dstat .pc{padding:0;background:none;font-weight:600}
+#v-dex #dex-note{background:none;box-shadow:none;border-radius:0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#v-dex .gsec h2{font-weight:600}
+#v-dex .dcell{background:none;padding:6px 0}
+#v-dex .dcell.own{box-shadow:none}
+#v-dex .dcell b{font-weight:600}
+#v-dex .dcell.miss b{color:var(--muted);font-weight:500}
+#v-dex .dcell.own .cn{color:var(--ink)}
+#v-dex .lst{background:none;padding:0;border-radius:0;border-top:1px solid var(--line)}
+/* Trend */
+#v-value .pnl{background:none;border-radius:0;padding:0!important}
+#v-value .tbig{font-weight:700;letter-spacing:-.03em}
+#v-value .vside{border:0;padding:4px 0 0;text-align:left}
+#v-value .vside>div+div{border-left:0}
+#v-value .vside b{display:inline;font-size:1.05rem;font-weight:600}
+#v-value .vside span{margin-left:5px;font-size:.85rem;font-weight:400}
+#v-value .vrows{border-top:1px solid var(--line)}
+#v-value .vrow2 .t b{font-weight:500}
+#v-value .vrow2 .v{font-weight:600}
+#v-value .sec2 h2{font-weight:600}
 </style>
 </head>
 <body>
