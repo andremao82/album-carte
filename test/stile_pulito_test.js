@@ -66,7 +66,7 @@ const {launch}=require(require('./percorsi').SHOT+'/browser.js'), assert=require
     const d=await page.evaluate(()=>{ const q=s=>document.querySelector(s), b=e=>e.getBoundingClientRect();
       const ttl=q('#cd-mv .cd-ttl'), st=q('#cd-mv .cd-stage'), cp=q('#v-card .cp [aria-pressed="true"]');
       const svg=q('#v-card .hist svg.vch');
-      return {ttl:!!ttl, name:ttl&&ttl.querySelector('.cd-name').textContent, set:ttl&&ttl.querySelector('.cd-set').textContent+' | '+ttl.querySelector('.cd-rar').textContent, same:ttl&&Math.abs(b(ttl.querySelector('.cd-set')).top-b(ttl.querySelector('.cd-rar')).top)<=2,
+      return {ttl:!!ttl, name:(q('#v-card > .cd-top .cd-name')||{}).textContent, set:ttl&&ttl.querySelector('.cd-set').textContent+' | '+ttl.querySelector('.cd-rar').textContent, same:ttl&&Math.abs(b(ttl.querySelector('.cd-set')).top-b(ttl.querySelector('.cd-rar')).top)<=2,
         above:ttl&&st&&b(ttl).bottom<=b(st).top+1, oldName:document.querySelectorAll('#v-card .cd-name').length,
         cpBg:getComputedStyle(cp).backgroundColor, cpSh:getComputedStyle(cp).boxShadow, lbl:q('#v-card .lbl2 b').innerText,
         mine:getComputedStyle(q('#v-card .mine')).backgroundColor, det:getComputedStyle(q('#v-card .det')).backgroundColor,

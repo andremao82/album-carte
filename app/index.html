@@ -972,9 +972,10 @@ textarea.note{font:inherit;font-size:.95rem}
 #v-cat #list.grid .item .qty{background:color-mix(in srgb,var(--bg) 80%,transparent);color:var(--ink);border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;font-weight:600}
 #v-home .vtop .lnk{color:var(--muted);font-weight:500;font-size:.85rem}
 /* Scheda carta */
-.cd-ttl{margin:6px 2px 0}
+.cd-ttl{margin:-6px 2px 0;text-align:center}
+#v-card > .cd-top .ttl.cd-name{margin:0;font-size:1.15rem;font-weight:700;line-height:1.25;letter-spacing:-.01em;white-space:normal;text-overflow:clip;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere}
 .cd-ttl .cd-name{margin:0 0 2px;text-align:left;font-size:1.6rem;font-weight:700;letter-spacing:-.02em}
-.cd-ttl .cd-set,.cd-ttl .cd-rar{display:inline;margin:0;text-align:left;font-size:.85rem;color:var(--muted)}
+.cd-ttl .cd-set,.cd-ttl .cd-rar{display:inline;margin:0;text-align:center;font-size:.85rem;color:var(--muted)}
 .cd-ttl .cd-rar::before{content:" · "}
 .cd-ttl .chip2{padding:0;background:none;color:var(--muted);font-size:.85rem;font-weight:400}
 .cd-stage::before{display:none}
@@ -3055,11 +3056,11 @@ function renderCard(){
   if (!e){ leaveCard(); return; }
   const u = unit(e), info = priceInfo(e.pr, e.variant), prev = previewURL(e), art = imgSrc(hiImg(prev) || prev), note = imgNote(e);
   const condName = (CONDS.find(c => c[0] === e.cond) || [0, e.cond])[1];
-  let h = '<div class="cd-top"><button class="rbtn glass" type="button" data-a="back" aria-label="Indietro">' + ICON_BACK + '</button><div class="ttl"></div>' +
+  let h = '<div class="cd-top"><button class="rbtn glass" type="button" data-a="back" aria-label="Indietro">' + ICON_BACK + '</button><div class="ttl cd-name">' + esc(e.name) + '</div>' +
     '<button class="rbtn glass" type="button" data-a="menu" aria-label="Altre azioni">' + ICON_MORE + '</button></div>' +
     '<div id="cd-sw"><div id="cd-mv">' +
-    // stile pulito (07/11/2026): nome, set e rarità in alto, sopra l'immagine
-    '<div class="cd-ttl"><div class="cd-name">' + esc(e.name) + '</div><div class="cd-set">' + esc(setLine(e.setName, e.number, e.total)) + '</div>' +
+    // stile pulito (07/11/2026): set e rarità in alto, sopra l'immagine; il nome sta al centro della barra (caso A, 07/11)
+    '<div class="cd-ttl"><div class="cd-set">' + esc(setLine(e.setName, e.number, e.total)) + '</div>' +
     (rarityName(e.rarity) ? '<div class="cd-rar"><span class="chip2 p">' + esc(rarityName(e.rarity)) + '</span></div>' : '') + '</div>' +
     '<div class="cd-stage"><div id="cd-tilt" class="cd-card art' + holoCls(e) + '" data-ini="' + esc(iniOf(e.name)) + '"' + (art ? ' role="button" tabindex="0" aria-label="Ingrandisci l’immagine"' : '') + '>' +
       (e.number ? '<em class="nn">' + esc(e.number) + '</em>' : '') + (art ? '<img id="cd-img" src="' + esc(art) + '" alt="' + esc(e.name) + '">' : '') + '</div></div>' +

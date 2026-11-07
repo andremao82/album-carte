@@ -32,7 +32,7 @@ const {launch}=require(require('./percorsi').SHOT+'/browser.js'), assert=require
     // il tocco finale: il click che il browser manderebbe sul pulsante sotto il dito
     await page.evaluate((x,y)=>{ const el=document.elementFromPoint(x,y); if(el) el.click(); },p.x+dx,p.y+dy);
   }
-  const SEL='#v-card .cd-name';
+  const SEL='#cd-mv .cd-ttl'; // dal 07/11 il nome sta nella barra ferma: si trascina la riga del set, che scorre con la carta
 
   // Collezione con filtro Italiano: Abra, Charmander, Eevee
   await page.evaluate(()=>document.querySelector('nav button[data-go="cat"]').click()); await wait(400);
