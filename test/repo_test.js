@@ -45,7 +45,8 @@ const ts=rd('strumenti/test.sh'); ok(/command -v timeout/.test(ts)&&/gtimeout/.t
 ok(/for c in node npm python3 zip unzip/.test(rd('strumenti/setup.sh')),'setup controlla i comandi necessari');
 // app/: ogni file pubblicato è un file del sito (niente file in più finiti online)
 const zipList=(rd('strumenti/pacchetto.sh').match(/zip -q -X "\$Z" ([^\n]+)/)||[])[1].trim().split(/\s+/).sort();
-ok(JSON.stringify(fs.readdirSync(L.SITE).sort())===JSON.stringify(zipList),'app/ contiene esattamente i file del sito: '+fs.readdirSync(L.SITE).join(' '));
+const siteFiles=fs.readdirSync(L.SITE).flatMap(f=>fs.statSync(path.join(L.SITE,f)).isDirectory()?fs.readdirSync(path.join(L.SITE,f)).map(g=>f+'/'+g):[f]).sort();
+ok(JSON.stringify(siteFiles)===JSON.stringify(zipList),'app/ contiene esattamente i file del sito: '+fs.readdirSync(L.SITE).join(' '));
 const mc=rd('app/carte.mobileconfig');
 ok(mc.includes('<string>https://'+sito+'.pages.dev/</string>'),'profilo già puntato al sito');
 // .gitignore: generati e backup personali fuori dal repository

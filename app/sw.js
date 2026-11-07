@@ -2,8 +2,8 @@
    - Il guscio dell'app (pagina, icone, manifest) viene conservato: l'app si apre anche senza rete e mostra il catalogo.
    - La pagina si cerca prima in rete (così gli aggiornamenti arrivano subito); se la rete non risponde entro 3 secondi o manca, si usa la copia conservata.
    - Le richieste verso altri siti (prezzi, immagini, riconoscimento) non vengono toccate. */
-const VERSION = 'album-v4';
-const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
+const VERSION = 'album-v5';
+const SHELL = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png', './fonts/nunito.woff2'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
