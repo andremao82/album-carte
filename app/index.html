@@ -901,6 +901,218 @@ textarea.note{font:inherit;font-size:.95rem}
 .zclose{position:absolute;top:calc(env(safe-area-inset-top,0px) + 8px);right:16px;width:44px;height:44px;border-radius:50%;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.16);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);color:#fff;display:grid;place-items:center;padding:0}
 .zclose svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round}
 @media (prefers-reduced-motion:reduce){.zoom img{transition:none}}
+
+/* ---- Stile pulito (07/11/2026): stesse sezioni, niente riquadri, grassetti più leggeri, scelte a parole, grafico a curva morbida ---- */
+.hdr h1{font-weight:700;letter-spacing:-.025em}
+.sec2{margin:34px 0 12px}
+.sec2 h2{font-size:1.1rem;font-weight:600}
+.sec2 .lnk{color:var(--muted);font-weight:500;font-size:.88rem}
+/* Home */
+#v-home .hdr{margin-bottom:4px}
+#v-home .bkline{margin:0 0 22px}
+#v-home .bkchip{padding:0;background:none;color:var(--muted);font-weight:500;font-size:.82rem}
+#v-home .bkchip i{background:var(--muted)}
+#v-home .bkchip.due i{background:var(--accent-fill)}
+#v-home .bkchip.due::after{content:"· Salva ora";color:var(--ink);font-weight:600}
+#v-home .bknote{background:none;box-shadow:none;padding:0 0 16px;margin:0 0 6px!important;border-bottom:1px solid var(--line);border-radius:0}
+#v-home .bknote h3{font-size:.95rem;font-weight:600;margin:0 0 2px}
+#v-home .bknote p{font-size:.85rem}
+#v-home .bknote .pbtn{min-height:32px;padding:0 14px;font-size:.82rem;font-weight:600}
+#v-home .vcard{background:none;padding:0;margin-top:8px;gap:8px;border-radius:0}
+#v-home .vtop{font-size:.85rem}
+#v-home .vl{gap:6px}
+#v-home .vbig{font-weight:700;letter-spacing:-.04em}
+#v-home .vpill{padding:0;background:none;font-size:.88rem;font-weight:600}
+#v-home .vside{border:0;padding:6px 0 0;text-align:left}
+#v-home .vside>div+div{border-left:0}
+#v-home .vside b{display:inline;font-size:1.05rem;font-weight:600}
+#v-home .vside b.a{color:var(--ink)}
+#v-home .vside span{margin-left:5px;font-size:.85rem;font-weight:400}
+#v-home .vcard .pbrow{gap:20px;margin:4px 0 0}
+#v-home .vcard .pbrow .pb{flex:none;padding:4px 0;background:none;color:var(--muted);font-size:.85rem;font-weight:500}
+#v-home .vcard .pbrow .pb[aria-pressed=true]{color:var(--ink);font-weight:700}
+#v-home .st .art{border-radius:6px}
+#v-home .st b{font-weight:500}
+/* Si sono mossi: Salite e Scese affiancate come prima (scelta dell'utente, 07/11/2026), senza riquadri */
+#v-home .movers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
+#v-home .movers .mv{background:none;padding:0;border-radius:0}
+#v-home .movers h3{font-size:.8rem;font-weight:500;color:var(--muted);margin:0;padding-bottom:6px;border-bottom:1px solid var(--line)}
+#v-home .mrow{border-bottom:1px solid var(--line);padding:9px 0}
+#v-home .mrow .t{flex:1;line-height:1.3}
+#v-home .mrow .t b{font-weight:500;font-size:.88rem}
+#v-home .mrow .t span{font-size:.8rem;font-weight:600}
+#v-home .mrow .t span.pc{font-size:.74rem;font-weight:500}
+#v-home .sprow{background:none;border-radius:0;padding:12px 0;margin:0;border-bottom:1px solid var(--line)}
+#v-home .sprow .logo{background:none}
+#v-home .sprow .t1 b{font-weight:500}
+.sprow .tbar,.tbar{height:3px}
+/* Collezione */
+#v-cat .stats{display:flex;flex-wrap:wrap;margin:-12px 0 16px;background:none;border:0;border-radius:0;overflow:visible}
+#v-cat .stats::before{display:none}
+#v-cat .stats>div{flex-direction:row;align-items:baseline;gap:4px;padding:0}
+#v-cat .stats>div+div{border-left:0}
+#v-cat .stats>div+div::before{content:"·";margin:0 7px;color:var(--muted)}
+#v-cat .stats>div:first-child .k{display:none}
+#v-cat .stats .k{order:2;font-size:.9rem;font-weight:400;text-transform:lowercase}
+#v-cat .stats .v,#v-cat .stats .v.l,#v-cat .stats .v.xl{order:1;font-size:.9rem;font-weight:500;letter-spacing:0;color:var(--muted)}
+#v-cat .stats .x{order:3;margin-left:4px;font-size:.8rem}
+#v-cat .ctools{gap:14px}
+#v-cat .sfield{background:none;border-radius:0;padding:0 2px;border-bottom:1px solid var(--line)}
+#v-cat .ctools .cicon{background:none;width:30px}
+#v-cat .ctools .vsw{background:none;padding:0}
+#v-cat .ctools .vsw button{width:30px;background:none;color:var(--muted)}
+#v-cat .ctools .vsw button[aria-pressed=true]{background:none;color:var(--ink)}
+#c-chips{gap:18px}
+#c-chips .pb{padding:6px 0;background:none;color:var(--muted);font-weight:500}
+#c-chips .pb[aria-pressed=true]{background:none;color:var(--ink);font-weight:700}
+#v-cat #list.grid{gap:20px 12px}
+#v-cat #list.grid .item .art{box-shadow:none;border-radius:6px}
+#v-cat .crow .val{font-weight:600}
+#v-cat .crow .meta{font-weight:400}
+#v-cat #list.grid .item .qty{background:color-mix(in srgb,var(--bg) 80%,transparent);color:var(--ink);border:0;box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none;font-weight:600}
+#v-home .vtop .lnk{color:var(--muted);font-weight:500;font-size:.85rem}
+/* Scheda carta */
+.cd-ttl{margin:6px 2px 0}
+.cd-ttl .cd-name{margin:0 0 2px;text-align:left;font-size:1.6rem;font-weight:700;letter-spacing:-.02em}
+.cd-ttl .cd-set,.cd-ttl .cd-rar{display:inline;margin:0;text-align:left;font-size:.85rem;color:var(--muted)}
+.cd-ttl .cd-rar::before{content:" · "}
+.cd-ttl .chip2{padding:0;background:none;color:var(--muted);font-size:.85rem;font-weight:400}
+.cd-stage::before{display:none}
+.cd-card{box-shadow:0 10px 24px var(--shadow)}
+.cd-price .v{font-weight:700;letter-spacing:-.035em}
+#v-card .lbl2{margin:24px 2px 6px}
+#v-card .lbl2 b{display:inline-block;font-size:.85rem;font-weight:500;letter-spacing:0;text-transform:lowercase}
+#v-card .lbl2 b::first-letter{text-transform:uppercase}
+#v-card .lp,#v-card .cp{gap:24px}
+#v-card .lp button,#v-card .cp button{flex:none;padding:0 1px}
+#v-card .lp button,#v-card .cp button,#v-card .vp button{min-height:36px;border-radius:0;background:none;color:var(--muted);font-weight:500;font-size:.92rem}
+#v-card .vp{gap:18px;padding:0;border-radius:0;background:none}
+#v-card .vp button{padding:6px 0}
+#v-card .lp button[aria-pressed=true],#v-card .cp button[aria-pressed=true],#v-card .vp button[aria-pressed=true]{background:none;color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--ink)}
+#v-card .mine,#v-card .det{background:none;padding:0;border-radius:0;margin-top:28px;border-top:1px solid var(--line)}
+#v-card .hist{background:none;padding:0;border-radius:0;margin-top:32px}
+#v-card .hist .hh b{font-weight:600}
+.hist .pbrow{gap:18px}
+.hist .pbrow .pb{flex:none;padding:4px 0;background:none;color:var(--muted);font-weight:500}
+.hist .pbrow .pb[aria-pressed=true]{background:none;color:var(--ink);font-weight:700}
+#v-card textarea.note{background:none;border-radius:0;border-bottom:1px solid var(--line);padding-left:2px;padding-right:2px}
+#v-card .delc{background:none;border:0;margin-top:28px}
+/* grafico a curva morbida: linea del colore del testo, area tenue, solo livelli e date estremi, pallino sull'ultimo punto */
+.vch .ln{stroke:var(--ink);stroke-width:2}
+.vch .g0{stop-color:var(--ink);stop-opacity:.10}
+.vch .g1{stop-color:var(--ink);stop-opacity:0}
+.vch .gr,.vch text.mid,.vch .dt{display:none}
+.vch .dt.es,.vch .dt.lst,.vch .lst{display:inline;fill:var(--ink)}
+.vch .lst{r:3.6px}
+.vch .dt.es{fill:var(--bg);stroke:var(--ink);stroke-width:1.4}
+.vch .sd{fill:var(--ink)}
+.chfull .vch .gr,.chfull .vch text.mid{display:inline}
+.chfull .vch .gr{stroke-opacity:.18}
+/* barra in basso "C · Solo icone" (scelta dell'utente, 07/11/2026): pillola più bassa senza vetro né ombra, nomi nascosti alla vista ma letti da VoiceOver */
+.dock .bar.glass{padding:4px 6px;background:var(--surface);border:1px solid var(--line);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.dock .bar.glass::after{display:none}
+.dock .bar button{min-height:46px;color:var(--muted)}
+.dock .bar button span{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.dock .bar button[aria-current=true]{background:none;color:var(--ink)}
+.dock .bar .scan button{width:46px;height:46px;min-height:0;color:var(--on-accent);box-shadow:none}
+.dock .bar .scan button svg{width:22px;height:22px}
+.dock .bar .scan .badge{top:-4px;right:-6px}
+/* Impostazioni in stile pulito (scelte dall'utente, 07/11/2026): stessi gruppi e voci, righe con linee sottili, icone piccole grigie, scelte come testo */
+#v-set .setbar #btn-setdone{min-height:36px;padding:0 2px;background:none;border:0;box-shadow:none;color:var(--ink);font-weight:700;font-size:1rem}
+#v-set .sh{margin:28px 2px 6px;font-size:.8rem;font-weight:500}
+#v-set .sgroup{background:none;border:0;border-radius:0;overflow:visible;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#v-set .sgroup.sgap{margin-top:16px}
+#v-set .sfoot{margin:8px 2px 0;font-size:.78rem}
+#v-set .srow2{min-height:50px;padding:8px 0;gap:12px}
+#v-set .srow2 .lbl{font-size:.95rem;font-weight:400}
+#v-set .srow2.act .lbl{font-weight:600}
+#v-set .srow2.act:active{background:var(--surface)}
+#v-set .ico{width:22px;height:22px;border-radius:0;background:none}
+#v-set .ico svg{width:19px;height:19px;stroke:var(--muted)}
+#v-set .ico.red svg{stroke:var(--danger)}
+#v-set .ico.code{width:26px;color:var(--muted);font-size:.7rem;font-weight:700}
+#v-set .srow2 select{min-height:36px;padding:0 24px 0 4px!important;background-color:transparent;border:0;color:var(--muted);text-align:right;text-align-last:right;background-position:right 2px center}
+#v-set .srow2 input{min-height:36px;padding:0 2px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}
+#v-set .appear{padding:6px 0 4px}
+#v-set #s-appear{display:flex;gap:22px}
+#v-set #s-appear button{flex:none;min-height:36px;padding:0;border:0;border-radius:0;background:none;color:var(--muted);font-weight:500}
+#v-set #s-appear button[aria-pressed=true]{background:none;color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--ink)}
+#v-set .sinfo{padding:12px 0}
+/* stile pulito per il resto (07/11/2026): vista elenco, pannello Aggiungi, Cerca e aggiungi, fogli, Scansione rapida ed editor dei bordi */
+.pbtn{font-weight:600}
+#v-cat #list:not(.grid) .item{background:none;border:0;border-radius:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0}
+#v-cat #list:not(.grid) .item .nm{font-weight:500}
+/* pannello Aggiungi carte */
+.ashead h2{font-weight:700;letter-spacing:-.02em}
+.addsheet .aopt,.addsheet .aopt.primary{margin-top:0;padding:14px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}
+.addsheet .aopt:first-of-type{border-top:1px solid var(--line)}
+.addsheet .aopt .ai{width:38px;height:38px;border-radius:50%;background:var(--sheet-panel)}
+.addsheet .aopt.primary .ai{background:var(--accent-fill);color:var(--on-accent)}
+.addsheet .aopt .at b{font-weight:600}
+.addsheet .aqueue{background:none;border-radius:0;padding:12px 0;border-bottom:1px solid var(--line)}
+/* campi (Cerca e aggiungi, Controlla la carta, Modifica più carte): solo una linea sotto; la freccia dei menu resta a destra */
+#v-scan .field input,#v-scan .field select,#bulk-sheet .field input,#bulk-sheet .field select{min-height:44px;padding-left:2px;border:0;border-bottom:1px solid var(--line);border-radius:0!important;background-color:transparent}
+#v-scan .field label,#bulk-sheet .field label{padding-left:2px;font-weight:500}
+#v-scan details summary{font-weight:600}
+#v-scan .item{background:none;border:0;border-radius:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0}
+#v-scan .item .nm{font-weight:600}
+/* fogli e menu */
+.bksheet h2,#be-title{font-weight:700;letter-spacing:-.02em}
+.actbtn.cancel{font-weight:600}
+.btn{font-weight:600}
+/* Scansione rapida ed editor dei bordi: restano scuri, caratteri più leggeri */
+#v-quick .qrow{border:0;border-radius:14px}
+#v-quick .qrow .nm{font-weight:600}
+#v-quick b,#qedge b{font-weight:600}
+/* stile pulito anche per Progressi, dettaglio del set, Pokédex e Trend (07/11/2026) */
+#v-sets .sfield,#v-dex .sfield{background:none;border-radius:0;padding:0 2px;border-bottom:1px solid var(--line)}
+#ss-filter,#v-sets .ssum .pbrow,#v-dex .pbrow,#v-dex .dtabs,#v-setd .seg,#v-value .seg{gap:20px}
+#ss-filter .pb,#v-sets .ssum .pb,#v-dex .pbrow .pb,#v-dex .dtools .pb,#v-dex .dtabs button,#v-setd .seg button,#v-value .seg button{flex:none;min-height:34px;padding:4px 0;border:0;border-radius:0;background:none;color:var(--muted);font-weight:500;font-size:.92rem}
+#ss-filter .pb[aria-pressed=true],#v-sets .ssum .pb[aria-pressed=true],#v-dex .pbrow .pb[aria-pressed=true],#v-dex .dtabs button[aria-pressed=true],#v-setd .seg button[aria-pressed=true],#v-value .seg button[aria-pressed=true]{background:none;border:0;color:var(--ink);font-weight:700}
+#v-dex .dtools .pb{color:var(--ink)}
+/* Progressi */
+#v-sets .ssum{background:none;padding:0;margin-top:0;border-radius:0}
+#v-sets .ssn b{font-weight:700;color:var(--ink);letter-spacing:-.03em}
+#v-sets .ssn span{font-weight:500}
+#v-sets .ssc{font-size:.9rem}
+#v-sets .ring2 .rb,#v-sets .ring2 .rf{stroke-width:6}
+#v-sets .ring2 b{font-weight:600;font-size:.95rem}
+#v-sets .sprow{background:none;border-radius:0;padding:12px 0;margin:0;border-bottom:1px solid var(--line)}
+#v-sets .sprow .logo{background:none}
+#v-sets .sprow .t1 b{font-weight:500}
+#btn-browse{background:none;border:0;font-weight:600;margin-top:18px!important}
+/* dettaglio del set e dei Pokémon / artisti */
+#v-setd .sdh .sdr b{font-weight:600}
+#v-setd .sdh .ini{background:var(--surface2);border:0;color:var(--muted);font-weight:600}
+#v-setd .tbar.big,#v-dex .tbar.big{height:4px}
+#v-setd .scell .im,#v-dexd .scell .im{border-radius:6px}
+#v-setd .scell .qb,#v-dexd .scell .qb{background:color-mix(in srgb,var(--bg) 80%,transparent);color:var(--ink);font-weight:600}
+#v-setd .scell.own .n,#v-dexd .scell.own .n{color:var(--ink);font-weight:600}
+#v-setd .elist .item,#v-dexd .elist .item{background:none;border:0;border-radius:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0}
+/* Pokédex */
+#v-dex .dtabs{margin-bottom:22px}
+#v-dex .dstat .n b{font-weight:700;color:var(--ink);letter-spacing:-.03em}
+#v-dex .dstat .n span{font-weight:500}
+#v-dex .dstat .pc{padding:0;background:none;font-weight:600}
+#v-dex #dex-note{background:none;box-shadow:none;border-radius:0;padding:12px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#v-dex .gsec h2{font-weight:600}
+#v-dex .dcell{background:none;padding:6px 0}
+#v-dex .dcell.own{box-shadow:none}
+#v-dex .dcell b{font-weight:600}
+#v-dex .dcell.miss b{color:var(--muted);font-weight:500}
+#v-dex .dcell.own .cn{color:var(--ink)}
+#v-dex .lst{background:none;padding:0;border-radius:0;border-top:1px solid var(--line)}
+/* Trend */
+#v-value .pnl{background:none;border-radius:0;padding:0!important}
+#v-value .tbig{font-weight:700;letter-spacing:-.03em}
+#v-value .vside{border:0;padding:4px 0 0;text-align:left}
+#v-value .vside>div+div{border-left:0}
+#v-value .vside b{display:inline;font-size:1.05rem;font-weight:600}
+#v-value .vside span{margin-left:5px;font-size:.85rem;font-weight:400}
+#v-value .vrows{border-top:1px solid var(--line)}
+#v-value .vrow2 .t b{font-weight:500}
+#v-value .vrow2 .v{font-weight:600}
+#v-value .sec2 h2{font-weight:600}
 </style>
 </head>
 <body>
@@ -2845,13 +3057,15 @@ function renderCard(){
   const condName = (CONDS.find(c => c[0] === e.cond) || [0, e.cond])[1];
   let h = '<div class="cd-top"><button class="rbtn glass" type="button" data-a="back" aria-label="Indietro">' + ICON_BACK + '</button><div class="ttl"></div>' +
     '<button class="rbtn glass" type="button" data-a="menu" aria-label="Altre azioni">' + ICON_MORE + '</button></div>' +
-    '<div id="cd-sw"><div id="cd-mv">' + '<div class="cd-stage"><div id="cd-tilt" class="cd-card art' + holoCls(e) + '" data-ini="' + esc(iniOf(e.name)) + '"' + (art ? ' role="button" tabindex="0" aria-label="Ingrandisci l’immagine"' : '') + '>' +
+    '<div id="cd-sw"><div id="cd-mv">' +
+    // stile pulito (07/11/2026): nome, set e rarità in alto, sopra l'immagine
+    '<div class="cd-ttl"><div class="cd-name">' + esc(e.name) + '</div><div class="cd-set">' + esc(setLine(e.setName, e.number, e.total)) + '</div>' +
+    (rarityName(e.rarity) ? '<div class="cd-rar"><span class="chip2 p">' + esc(rarityName(e.rarity)) + '</span></div>' : '') + '</div>' +
+    '<div class="cd-stage"><div id="cd-tilt" class="cd-card art' + holoCls(e) + '" data-ini="' + esc(iniOf(e.name)) + '"' + (art ? ' role="button" tabindex="0" aria-label="Ingrandisci l’immagine"' : '') + '>' +
       (e.number ? '<em class="nn">' + esc(e.number) + '</em>' : '') + (art ? '<img id="cd-img" src="' + esc(art) + '" alt="' + esc(e.name) + '">' : '') + '</div></div>' +
     (reduceMotion() ? '' : '<p class="cd-hint">Trascina il dito sulla carta per inclinarla</p>') +
     (note ? '<p class="cd-note">' + esc(note) + '</p>' : '') +
     '<div class="cd-ph"><button class="pbtn" type="button" data-a="photo">' + ICON_CAMERA + (photoExists(e.photo) ? 'Foto' : 'Aggiungi foto') + '</button></div>' +
-    '<div class="cd-name">' + esc(e.name) + '</div><div class="cd-set">' + esc(setLine(e.setName, e.number, e.total)) + '</div>' +
-    (rarityName(e.rarity) ? '<div class="cd-rar"><span class="chip2 p">' + esc(rarityName(e.rarity)) + '</span></div>' : '') +
     '<div class="cd-price">' + (u != null ? '<div class="v">' + eur(u) + '</div>' + (e.qty > 1 ? '<div class="q">×' + e.qty + ' = ' + eur(u * e.qty) + '</div>' : '') : '<div class="none">Senza prezzo</div>') +
       '<div class="cap">' + esc(sourceLine(e, info)) + '</div></div>' +
     lbl2('Lingua', LANGN[e.lang] || e.lang) + '<div class="lp" role="group" aria-label="Lingua">' + LANGS.map(l => '<button type="button" data-ed="lang" data-v="' + l + '" aria-pressed="' + (e.lang === l) + '" aria-label="' + esc(LANGN[l] || l) + '">' + esc(l) + '</button>').join('') + '</div>' +
@@ -3508,10 +3722,13 @@ function areaChart(pts, h = 150, label = 'Grafico del valore', w = 340){
   // date troppo vicine (meno di 44 punti) si saltano: restano sempre la prima e l'ultima
   const tk = chartTickDays(pts.map(p => p.day)).filter((d, i, a) => i === 0 || i === a.length - 1 || (X(d) - X(a[0]) >= 44 && X(a[a.length - 1]) - X(d) >= 44));
   let g = '<defs><linearGradient id="' + id + 'g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" class="g0"/><stop offset="1" class="g1"/></linearGradient></defs>';
-  g += ticks.map(v => '<line class="gr" x1="' + L + '" x2="' + (W - R + 4) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text x="' + (W - R + 8) + '" y="' + (Y(v) + 3.5).toFixed(1) + '">' + esc(chartEuroLabel(v, whole)) + '</text>').join('');
+  // stile pulito (07/11/2026, curva morbida): i livelli e le date intermedi hanno la classe "mid" (nascosti tranne a tutto schermo), l'ultimo punto "lst"
+  const mid = (i, a) => i > 0 && i < a.length - 1 ? ' class="mid"' : '';
+  g += ticks.map((v, i, a) => '<line class="gr" x1="' + L + '" x2="' + (W - R + 4) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '"/><text' + mid(i, a) + ' x="' + (W - R + 8) + '" y="' + (Y(v) + 3.5).toFixed(1) + '">' + esc(chartEuroLabel(v, whole)) + '</text>').join('');
   g += '<path d="' + area + '" fill="url(#' + id + 'g)"/><path class="ln" d="' + line + '"/>';
-  if (n <= CHART_MAX_DOTS) g += xy.map((q, i) => '<circle class="dt' + (pts[i].note ? ' es' : '') + '" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="2.6"/>').join('');
-  g += tk.map((d, i) => '<text x="' + X(d).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === tk.length - 1 ? 'end' : 'middle') + '">' + esc(chartDayLabel(d)) + '</text>').join('');
+  if (n <= CHART_MAX_DOTS) g += xy.map((q, i) => '<circle class="dt' + (pts[i].note ? ' es' : '') + (i === n - 1 ? ' lst' : '') + '" cx="' + q[0].toFixed(1) + '" cy="' + q[1].toFixed(1) + '" r="2.6"/>').join('');
+  else g += '<circle class="lst" cx="' + xy[n - 1][0].toFixed(1) + '" cy="' + xy[n - 1][1].toFixed(1) + '" r="2.6"/>';
+  g += tk.map((d, i) => '<text' + mid(i, tk) + ' x="' + X(d).toFixed(1) + '" y="' + (H - 6) + '" text-anchor="' + (i === 0 ? 'start' : i === tk.length - 1 ? 'end' : 'middle') + '">' + esc(chartDayLabel(d)) + '</text>').join('');
   chartReg.set(id, {pts, X, Y, W, R, T, H, B}); if (chartReg.size > 24) chartReg.delete(chartReg.keys().next().value);
   const last = pts[n - 1];
   return '<svg class="vch" id="' + id + '" data-chart="' + id + '" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(label) + '. Ultimo valore ' + esc(eur(last.value)) + ' il ' + esc(chartDayLabel(last.day)) + '">' + g + '<g class="sel"></g></svg>';
@@ -3573,8 +3790,10 @@ const moverRow = (r, col) => '<button class="mrow" type="button" data-open="' + 
 function renderHome(){
   recordValue(); // aprire l'app ogni giorno basta a far crescere lo storico del valore
   const st = homeStats(), groups = groupSets();
-  let h = '<div class="hdr"><h1>Album</h1><div class="hbtns">' + (catalog.length ? backupChip() : '') +
-    '<button id="hm-gear" class="cicon" type="button" data-a="settings" aria-label="Impostazioni">' + ICON_SLIDERS + '</button></div></div>';
+  // stile pulito (07/11/2026): il chip del backup è una riga piccola sotto il titolo
+  let h = '<div class="hdr"><h1>Album</h1><div class="hbtns">' +
+    '<button id="hm-gear" class="cicon" type="button" data-a="settings" aria-label="Impostazioni">' + ICON_SLIDERS + '</button></div></div>' +
+    (catalog.length ? '<div class="bkline">' + backupChip() + '</div>' : '');
   if (!catalog.length){
     h += '<div class="empty2">' + ICON_STACK + '<b>Nessuna carta</b><p>Tocca il tasto giallo in basso per fotografare la prima, oppure ripristina un backup dalle Impostazioni.</p>' +
       '<button class="btn solid" type="button" data-a="add">Aggiungi la prima carta</button></div>';
