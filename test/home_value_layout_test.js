@@ -41,8 +41,9 @@ const {launch}=require(require('./percorsi').SHOT+'/browser.js'), assert=require
     ok(r.cols.every(c=>Math.abs(c.t-r.cols[0].t)<=1),w+': le tre colonne sulla stessa riga');
     ok(r.cols[0].r<=r.cols[1].l+1&&r.cols[1].r<=r.cols[2].l+1,w+': colonne affiancate da sinistra a destra');
     ok(r.cols.every(c=>Math.abs(c.w-r.side.w/3)<=2),w+': colonne di larghezza uguale ('+r.cols.map(c=>Math.round(c.w)).join(',')+')');
-    ok(r.cols[0].bl==='0px'&&r.cols[1].bl!=='0px'&&r.cols[2].bl!=='0px',w+': linee di separazione fra le colonne');
-    ok(r.bt!=='0px'&&r.ta==='center',w+': linea sopra la fascia e testo centrato');
+    // stile pulito (07/11/2026, scelta dell'utente): niente linee né testo centrato, una riga di testo allineata a sinistra
+    ok(r.cols.every(c=>c.bl==='0px'),w+': niente linee di separazione fra le colonne');
+    ok(r.bt==='0px'&&r.ta==='left',w+': niente linea sopra la fascia, testo a sinistra');
     ok(r.big.r<=r.card.r-1&&r.big.l>=r.card.l,w+': il valore sta dentro il riquadro ('+JSON.stringify([r.big.l,r.big.r,r.card.r])+')');
     await page.close();
   }
