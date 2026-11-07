@@ -114,6 +114,33 @@ const {launch}=require(require('./percorsi').SHOT+'/browser.js'), assert=require
     ok(clear(v.seg),T+'Trend: periodo scelto senza pillola gialla');
     ok(v.pnl.length>=2&&v.pnl.every(clear),T+'Trend: riepilogo, grafico ed elenchi senza riquadri');
     ok(v.side==='0px',T+'Trend: salite / scese / ferme senza linee');
+    // ---- barra solo icone, Si sono mossi affiancati, Impostazioni e il resto (terza richiesta del 07/11/2026)
+    await nav('home');
+    const g=await page.evaluate(()=>{ const q=s=>document.querySelector(s), cs=s=>getComputedStyle(q(s));
+      const sp=[...document.querySelectorAll('.dock .bar button[data-go] span')], mv=[...document.querySelectorAll('#v-home .movers .mv')].map(m=>m.getBoundingClientRect());
+      return {names:sp.map(x=>x.textContent).join(','), hidden:sp.every(x=>x.getBoundingClientRect().width<=1), bar:cs('.dock .bar').backdropFilter, h:q('.dock .bar').getBoundingClientRect().height,
+        cur:cs('.dock .bar button[aria-current="true"]').backgroundColor, mv:mv.length===2&&Math.abs(mv[0].top-mv[1].top)<2&&mv[0].right<=mv[1].left+1}; });
+    ok(g.names==='Home,Collezione,Progressi,Pokédex'&&g.hidden,T+'barra: nomi nascosti alla vista ma presenti per VoiceOver ('+g.names+')');
+    ok(g.bar==='none'&&g.h<64,T+'barra: senza vetro e più bassa ('+g.h+' px)');
+    ok(clear(g.cur),T+'barra: scheda attiva senza macchia gialla');
+    ok(g.mv,T+'Si sono mossi: Salite e Scese affiancate');
+    await page.evaluate(()=>document.getElementById('hm-gear').click()); await new Promise(r=>setTimeout(r,400));
+    const st=await page.evaluate(()=>{ const q=s=>document.querySelector(s), cs=s=>getComputedStyle(q(s));
+      return {grp:cs('#v-set .sgroup').backgroundColor, ico:cs('#v-set .ico.green').backgroundColor, sel:cs('#v-set .srow2 select').backgroundColor, done:cs('#btn-setdone').backgroundColor,
+        ap:cs('#s-appear [aria-pressed="true"]').backgroundColor, apSh:cs('#s-appear [aria-pressed="true"]').boxShadow, groups:document.querySelectorAll('#v-set .sgroup').length}; });
+    ok(clear(st.grp)&&clear(st.ico)&&clear(st.sel),T+'Impostazioni: gruppi, icone e menu senza riquadri colorati');
+    ok(clear(st.done),T+'Impostazioni: "Fine" come testo');
+    ok(clear(st.ap)&&st.apSh!=='none',T+'Impostazioni: aspetto scelto sottolineato');
+    ok(st.groups>=10,T+'Impostazioni: tutti i gruppi ci sono ancora ('+st.groups+')');
+    await page.evaluate(()=>document.getElementById('btn-setdone').click()); await new Promise(r=>setTimeout(r,300));
+    await nav('cat'); await page.evaluate(()=>document.getElementById('v-list').click()); await new Promise(r=>setTimeout(r,300));
+    const li=await page.evaluate(()=>{ const it=document.querySelector('#list .item'); return {bg:getComputedStyle(it).backgroundColor, bb:getComputedStyle(it).borderBottomWidth}; });
+    ok(clear(li.bg)&&li.bb!=='0px',T+'Collezione in elenco: righe senza riquadro, con linea sotto');
+    await page.evaluate(()=>document.getElementById('v-grid').click());
+    await page.evaluate(()=>document.getElementById('fab').click()); await new Promise(r=>setTimeout(r,300));
+    const ad=await page.evaluate(()=>{ const o=document.querySelector('.addsheet .aopt.primary'); return {bg:getComputedStyle(o).backgroundColor, bl:getComputedStyle(o).borderLeftWidth, ai:getComputedStyle(o.querySelector('.ai')).backgroundColor}; });
+    ok(clear(ad.bg)&&ad.bl==='0px',T+'Aggiungi carte: opzioni senza riquadro né bordo giallo');
+    ok(!clear(ad.ai),T+'Aggiungi carte: icona della Scansione rapida ancora piena');
     await page.close();
   }
   } finally { await browser.close(); }

@@ -931,14 +931,15 @@ textarea.note{font:inherit;font-size:.95rem}
 #v-home .vcard .pbrow .pb[aria-pressed=true]{color:var(--ink);font-weight:700}
 #v-home .st .art{border-radius:6px}
 #v-home .st b{font-weight:500}
-#v-home .movers{display:block}
+/* Si sono mossi: Salite e Scese affiancate come prima (scelta dell'utente, 07/11/2026), senza riquadri */
+#v-home .movers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:18px}
 #v-home .movers .mv{background:none;padding:0;border-radius:0}
-#v-home .movers .mv+.mv{margin-top:12px}
-#v-home .movers h3{font-size:.8rem;font-weight:500;color:var(--muted);margin:0 0 2px}
+#v-home .movers h3{font-size:.8rem;font-weight:500;color:var(--muted);margin:0;padding-bottom:6px;border-bottom:1px solid var(--line)}
 #v-home .mrow{border-bottom:1px solid var(--line);padding:9px 0}
-#v-home .mrow .t{flex-direction:row;align-items:baseline;gap:10px;flex:1}
-#v-home .mrow .t b{flex:1;font-weight:500;font-size:.92rem}
-#v-home .mrow .t span{font-size:.85rem;font-weight:600}
+#v-home .mrow .t{flex:1;line-height:1.3}
+#v-home .mrow .t b{font-weight:500;font-size:.88rem}
+#v-home .mrow .t span{font-size:.8rem;font-weight:600}
+#v-home .mrow .t span.pc{font-size:.74rem;font-weight:500}
 #v-home .sprow{background:none;border-radius:0;padding:12px 0;margin:0;border-bottom:1px solid var(--line)}
 #v-home .sprow .logo{background:none}
 #v-home .sprow .t1 b{font-weight:500}
@@ -1005,6 +1006,62 @@ textarea.note{font:inherit;font-size:.95rem}
 .vch .sd{fill:var(--ink)}
 .chfull .vch .gr,.chfull .vch text.mid{display:inline}
 .chfull .vch .gr{stroke-opacity:.18}
+/* barra in basso "C · Solo icone" (scelta dell'utente, 07/11/2026): pillola più bassa senza vetro né ombra, nomi nascosti alla vista ma letti da VoiceOver */
+.dock .bar.glass{padding:4px 6px;background:var(--surface);border:1px solid var(--line);box-shadow:none;-webkit-backdrop-filter:none;backdrop-filter:none}
+.dock .bar.glass::after{display:none}
+.dock .bar button{min-height:46px;color:var(--muted)}
+.dock .bar button span{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.dock .bar button[aria-current=true]{background:none;color:var(--ink)}
+.dock .bar .scan button{width:46px;height:46px;min-height:0;color:var(--on-accent);box-shadow:none}
+.dock .bar .scan button svg{width:22px;height:22px}
+.dock .bar .scan .badge{top:-4px;right:-6px}
+/* Impostazioni in stile pulito (scelte dall'utente, 07/11/2026): stessi gruppi e voci, righe con linee sottili, icone piccole grigie, scelte come testo */
+#v-set .setbar #btn-setdone{min-height:36px;padding:0 2px;background:none;border:0;box-shadow:none;color:var(--ink);font-weight:700;font-size:1rem}
+#v-set .sh{margin:28px 2px 6px;font-size:.8rem;font-weight:500}
+#v-set .sgroup{background:none;border:0;border-radius:0;overflow:visible;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+#v-set .sgroup.sgap{margin-top:16px}
+#v-set .sfoot{margin:8px 2px 0;font-size:.78rem}
+#v-set .srow2{min-height:50px;padding:8px 0;gap:12px}
+#v-set .srow2 .lbl{font-size:.95rem;font-weight:400}
+#v-set .srow2.act .lbl{font-weight:600}
+#v-set .srow2.act:active{background:var(--surface)}
+#v-set .ico{width:22px;height:22px;border-radius:0;background:none}
+#v-set .ico svg{width:19px;height:19px;stroke:var(--muted)}
+#v-set .ico.red svg{stroke:var(--danger)}
+#v-set .ico.code{width:26px;color:var(--muted);font-size:.7rem;font-weight:700}
+#v-set .srow2 select{min-height:36px;padding:0 24px 0 4px!important;background-color:transparent;border:0;color:var(--muted);text-align:right;text-align-last:right;background-position:right 2px center}
+#v-set .srow2 input{min-height:36px;padding:0 2px;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}
+#v-set .appear{padding:6px 0 4px}
+#v-set #s-appear{display:flex;gap:22px}
+#v-set #s-appear button{flex:none;min-height:36px;padding:0;border:0;border-radius:0;background:none;color:var(--muted);font-weight:500}
+#v-set #s-appear button[aria-pressed=true]{background:none;color:var(--ink);font-weight:700;box-shadow:inset 0 -2px 0 var(--ink)}
+#v-set .sinfo{padding:12px 0}
+/* stile pulito per il resto (07/11/2026): vista elenco, pannello Aggiungi, Cerca e aggiungi, fogli, Scansione rapida ed editor dei bordi */
+.pbtn{font-weight:600}
+#v-cat #list:not(.grid) .item{background:none;border:0;border-radius:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0}
+#v-cat #list:not(.grid) .item .nm{font-weight:500}
+/* pannello Aggiungi carte */
+.ashead h2{font-weight:700;letter-spacing:-.02em}
+.addsheet .aopt,.addsheet .aopt.primary{margin-top:0;padding:14px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}
+.addsheet .aopt:first-of-type{border-top:1px solid var(--line)}
+.addsheet .aopt .ai{width:38px;height:38px;border-radius:50%;background:var(--sheet-panel)}
+.addsheet .aopt.primary .ai{background:var(--accent-fill);color:var(--on-accent)}
+.addsheet .aopt .at b{font-weight:600}
+.addsheet .aqueue{background:none;border-radius:0;padding:12px 0;border-bottom:1px solid var(--line)}
+/* campi (Cerca e aggiungi, Controlla la carta, Modifica più carte): solo una linea sotto; la freccia dei menu resta a destra */
+#v-scan .field input,#v-scan .field select,#bulk-sheet .field input,#bulk-sheet .field select{min-height:44px;padding-left:2px;border:0;border-bottom:1px solid var(--line);border-radius:0!important;background-color:transparent}
+#v-scan .field label,#bulk-sheet .field label{padding-left:2px;font-weight:500}
+#v-scan details summary{font-weight:600}
+#v-scan .item{background:none;border:0;border-radius:0;border-bottom:1px solid var(--line);padding:10px 0;margin:0}
+#v-scan .item .nm{font-weight:600}
+/* fogli e menu */
+.bksheet h2,#be-title{font-weight:700;letter-spacing:-.02em}
+.actbtn.cancel{font-weight:600}
+.btn{font-weight:600}
+/* Scansione rapida ed editor dei bordi: restano scuri, caratteri più leggeri */
+#v-quick .qrow{border:0;border-radius:14px}
+#v-quick .qrow .nm{font-weight:600}
+#v-quick b,#qedge b{font-weight:600}
 /* stile pulito anche per Progressi, dettaglio del set, Pokédex e Trend (07/11/2026) */
 #v-sets .sfield,#v-dex .sfield{background:none;border-radius:0;padding:0 2px;border-bottom:1px solid var(--line)}
 #ss-filter,#v-sets .ssum .pbrow,#v-dex .pbrow,#v-dex .dtabs,#v-setd .seg,#v-value .seg{gap:20px}

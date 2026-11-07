@@ -1,5 +1,5 @@
 const OUT=require('path').resolve(__dirname,'../.work/shot')+'/'; require('fs').mkdirSync(OUT,{recursive:true});
-// Stile pulito (07/11/2026): Home, Collezione, scheda carta, Trend, Progressi, dettaglio del set e Pokédex senza il foglio del backup davanti. Uso: node shot_pulito.js [dark|light]
+// Stile pulito (07/11/2026): Home, Collezione, scheda carta, Trend, Progressi, dettaglio del set, Pokédex, vista elenco, Aggiungi, Cerca e aggiungi, Impostazioni senza il foglio del backup davanti. Uso: node shot_pulito.js [dark|light]
 // Promemoria del backup in Home visibile (backup 5 giorni fa) con la variabile BK=1.
 const {launch}=require('./browser');
 const theme=process.argv[2]||'dark';
@@ -35,4 +35,9 @@ const theme=process.argv[2]||'dark';
   await page.evaluate(()=>history.back()); await new Promise(r=>setTimeout(r,200));
   await click('nav button[data-go="dex"]'); await new Promise(r=>setTimeout(r,800)); await hide(); await snap('dex');
   await click('#v-dex [data-cat="artist"]'); await hide(); await snap('dex_art');
+  await click('nav button[data-go="cat"]'); await click('#v-list'); await hide(); await snap('cat_list'); await click('#v-grid');
+  await click('#fab'); await hide(); await snap('add');
+  await click('[data-ad="search"]'); await hide(); await snap('search');
+  await page.evaluate(()=>history.back()); await new Promise(r=>setTimeout(r,200));
+  await click('nav button[data-go="home"]'); await click('#hm-gear'); await hide(); await snap('set',true);
   await browser.close(); })();
