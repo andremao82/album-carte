@@ -28,7 +28,7 @@ function ok(c,msg){ if(!c) throw new Error('NON SUPERATO: '+msg); console.log(' 
  eq(txt(t,'#v-home h1'),'Album','2 titolo Album');
  eq(txt(t,'#v-home .vbig'),'31,50 €','2 valore (25 + 3×2 + 0,5)');
  eq([...t.d.querySelectorAll('#v-home .vside b')].map(b=>b.textContent).join('|'),'6|4|3','2 carte / diverse / set');
- eq(txt(t,'#v-home .vcard .warn'),'1 carta senza prezzo','2 carte senza prezzo');
+ eq(txt(t,'#v-home .vcard .warn'),'1 carta senza prezzo ›','2 carte senza prezzo (tasto che apre Collezione filtrata)');
  ok(!t.d.querySelector('#v-home svg.vch')&&/Il grafico si riempie/.test(txt(t,'#v-home .vcard')),'2 senza storico: nota al posto del grafico');
  eq([...t.d.querySelectorAll('#v-home .vcard [data-r]')].map(b=>b.textContent+(b.getAttribute('aria-pressed')==='true'?'*':'')).join(' '),'7 gg 30 gg* 90 gg Tutto','2 pillole del periodo');
  const strips=t.d.querySelectorAll('#v-home .strip');

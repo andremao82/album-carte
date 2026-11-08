@@ -574,6 +574,7 @@ html,body{color-scheme:var(--scheme)}
 .sec2 .lnk{font-size:.9rem}
 .cap{font-size:.78rem;color:var(--muted)}
 .warn{color:var(--orange)}
+.lnkw{background:none;border:0;padding:4px 0;margin:-4px 0;font:inherit;font-size:.78rem;text-align:left;cursor:pointer}
 .empty2{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:40px 8px}
 .empty2 svg{width:46px;height:46px;fill:none;stroke:var(--accent);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .empty2 b{font-size:1.2rem}
@@ -3889,7 +3890,7 @@ function renderHome(){
       '<div class="vrow"><div class="vl"><div class="vbig' + sizeCls(vs, 9, 11) + '">' + vs + '</div>' +
       (pct != null && Math.abs(pct) >= 0.05 ? '<span class="vpill ' + (pct >= 0 ? 'up' : 'down') + '">' + (pct >= 0 ? '▲ ' : '▼ ') + signedPct(pct).slice(1) + '</span>' : '') +
       (pct != null ? '<span class="cap">prezzi rispetto a ' + (homeRange ? homeRange + ' giorni fa' : 'l’inizio') + '</span>' : '') +
-      (st.miss ? '<span class="cap warn">' + st.miss + (st.miss === 1 ? ' carta senza prezzo' : ' carte senza prezzo') + '</span>' : '') + '</div>' +
+      (st.miss ? '<button class="cap warn lnkw" type="button" data-a="noprice" aria-label="Mostra in Collezione le carte senza prezzo">' + st.miss + (st.miss === 1 ? ' carta senza prezzo' : ' carte senza prezzo') + ' ›</button>' : '') + '</div>' +
       '<div class="vside"><div><b class="a">' + fmtN(st.n) + '</b><span>' + (st.n === 1 ? 'carta' : 'carte') + '</span></div><div><b>' + fmtN(distinctCount()) + '</b><span>diverse</span></div><div><b>' + fmtN(groups.length) + '</b><span>set</span></div></div></div>' +
       (pts.length >= 2 ? areaChart(pts, 150) : '<div class="chnote">Il grafico si riempie con i giorni: serve almeno un secondo aggiornamento dei prezzi.</div>') +
       '<div class="pbrow eq" role="group" aria-label="Periodo">' + [[7, '7 gg'], [30, '30 gg'], [90, '90 gg'], [0, 'Tutto']].map(r => '<button class="pb" type="button" data-r="' + r[0] + '" aria-pressed="' + (homeRange === r[0]) + '">' + r[1] + '</button>').join('') + '</div></div>'; }
@@ -3921,6 +3922,10 @@ $('v-home').addEventListener('click', ev => {
   else if (a === 'allcards'){ cfg.albumSort = 'value'; LS.set('pkm_cfg', cfg); go('cat'); }
   else if (a === 'recentcards'){ cfg.albumSort = 'recent'; LS.set('pkm_cfg', cfg); go('cat'); }
   else if (a === 'allsets') go('sets');
+  else if (a === 'noprice'){ // Collezione col solo filtro Senza prezzo acceso, fila dei filtri scorsa fino a mostrarlo
+    clearFilters(); cf.noprice = true; $('c-q').value = ''; go('cat');
+    const fc = $('c-chips'), pb = fc.querySelector('[data-qf="noprice"]'); if (pb) fc.scrollLeft = Math.max(0, pb.offsetLeft - fc.offsetLeft - 16);
+  }
   else if (a === 'backup') doBackup();
   else if (a === 'bklater'){ LS.set('pkm_bksnooze', Date.now() + 864e5); renderHome(); }
 });
