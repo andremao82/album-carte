@@ -1058,7 +1058,7 @@ main{padding-bottom:calc(var(--dockb) + 118px)}
 .addsheet .aopt,.addsheet .aopt.primary{margin-top:0;padding:14px 0;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none}
 .addsheet .aopt:first-of-type{border-top:1px solid var(--line)}
 .addsheet .aopt .ai{width:38px;height:38px;border-radius:50%;background:var(--sheet-panel)}
-.addsheet .aopt.primary .ai{background:var(--accent-fill);color:var(--on-accent)}
+/* 08/11/2026: icona della Scansione rapida bianca come le altre (il tasto di scansione nella barra ora è grigio) */
 .addsheet .aopt .at b{font-weight:600}
 .addsheet .aqueue{background:none;border-radius:0;padding:12px 0;border-bottom:1px solid var(--line)}
 /* campi (Cerca e aggiungi, Controlla la carta, Modifica più carte): solo una linea sotto; la freccia dei menu resta a destra */
@@ -1414,7 +1414,7 @@ main{padding-bottom:calc(var(--dockb) + 118px)}
 <div id="add-sheet" class="sheet addsheet" role="dialog" aria-label="Aggiungi carte" hidden>
   <div class="ashead"><h2>Aggiungi carte</h2><button class="cicon" type="button" data-ad="close" aria-label="Chiudi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
   <p id="add-key" class="akey" hidden>Per leggere le foto serve una chiave: la inserisci in Impostazioni.</p>
-  <button class="aopt primary" type="button" data-ad="quick"><span class="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/></svg></span><span class="at"><b>Scansione rapida</b><span>Fotocamera sempre aperta, una carta dopo l’altra</span></span><span class="chev" aria-hidden="true">›</span></button>
+  <button class="aopt" type="button" data-ad="quick"><span class="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8V6a2 2 0 0 1 2-2h2M16 4h2a2 2 0 0 1 2 2v2M20 16v2a2 2 0 0 1-2 2h-2M8 20H6a2 2 0 0 1-2-2v-2"/></svg></span><span class="at"><b>Scansione rapida</b><span>Fotocamera sempre aperta, una carta dopo l’altra</span></span><span class="chev" aria-hidden="true">›</span></button>
   <button class="aopt" type="button" data-ad="photos"><span class="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="3" width="15" height="13" rx="2"/><path d="M3 7v11a2 2 0 0 0 2 2h12M9 13l3-3 4 4M14 12l1.5-1.5L19 14"/></svg></span><span class="at"><b>Da foto</b><span id="add-photos-t">Scegli una o più foto dalla galleria</span></span><span class="chev" aria-hidden="true">›</span></button>
   <button class="aopt" type="button" data-ad="search"><span class="ai"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg></span><span class="at"><b>Cerca e aggiungi</b><span>Per nome o numero, senza foto</span></span><span class="chev" aria-hidden="true">›</span></button>
   <div id="add-queue"></div>

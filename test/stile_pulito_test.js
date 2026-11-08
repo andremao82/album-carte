@@ -138,9 +138,9 @@ const {launch}=require(require('./percorsi').SHOT+'/browser.js'), assert=require
     ok(clear(li.bg)&&li.bb!=='0px',T+'Collezione in elenco: righe senza riquadro, con linea sotto');
     await page.evaluate(()=>document.getElementById('v-grid').click());
     await page.evaluate(()=>document.getElementById('fab').click()); await new Promise(r=>setTimeout(r,300));
-    const ad=await page.evaluate(()=>{ const o=document.querySelector('.addsheet .aopt.primary'); return {bg:getComputedStyle(o).backgroundColor, bl:getComputedStyle(o).borderLeftWidth, ai:getComputedStyle(o.querySelector('.ai')).backgroundColor}; });
+    const ad=await page.evaluate(()=>{ const o=document.querySelector('.addsheet .aopt[data-ad=quick]'); return {bg:getComputedStyle(o).backgroundColor, bl:getComputedStyle(o).borderLeftWidth, ai:getComputedStyle(o.querySelector('.ai')).backgroundColor}; });
     ok(clear(ad.bg)&&ad.bl==='0px',T+'Aggiungi carte: opzioni senza riquadro né bordo giallo');
-    ok(!clear(ad.ai),T+'Aggiungi carte: icona della Scansione rapida ancora piena');
+    ok(!clear(ad.ai),T+'Aggiungi carte: icona della Scansione rapida su cerchio pieno (bianco come le altre)');
     await page.close();
   }
   } finally { await browser.close(); }
