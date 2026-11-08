@@ -2897,8 +2897,12 @@ const setLine = (sn, n, t) => n ? sn + ' · ' + numLine(n, t) : sn;
 const catView = () => cfg.catView === 'list' ? 'list' : 'grid';
 const reduceMotion = () => !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 // un'immagine che non si carica lascia il posto alle iniziali (la pagina carta ha il suo ripiego)
+// prima però prova quella grande: per alcune carte italiane TCGdex ha high.webp ma non low.webp (08/11/2026)
 document.addEventListener('error', ev => { const t = ev.target;
-  if (t && t.tagName === 'IMG' && t.id !== 'cd-img' && t.closest && t.closest('.art, .tile .im')) t.remove(); }, true);
+  if (!(t && t.tagName === 'IMG' && t.id !== 'cd-img' && t.closest && t.closest('.art, .tile .im'))) return;
+  const s = t.getAttribute('src') || '';
+  if (s.endsWith('/low.webp')){ t.src = s.slice(0, -'/low.webp'.length) + '/high.webp'; return; }
+  t.remove(); }, true);
 // inclinazione della carta col dito: rotazione e posizione del riflesso seguono il punto toccato
 function tiltAt(el, nx, ny){
   nx = Math.min(1, Math.max(0, nx)); ny = Math.min(1, Math.max(0, ny));
