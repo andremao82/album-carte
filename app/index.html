@@ -2501,6 +2501,8 @@ async function searchCards(name, num, tot, lang, tdName){
   if (!out.found.length){
     try {
       const r = await searchPtcgRanked(name, num, tot);
+      // 08/11/2026: la Pokémon TCG API ha solo carte inglesi: per una giapponese non è mai un risultato sicuro
+      if (lang === 'ja') r.weak = true;
       // un risultato debole della Pokémon TCG API non scavalca uno debole di TCGdex (che ha le carte italiane)
       if (r.cards.length && (!r.weak || !weakTd.length)){ out.found = r.cards; out.source = 'Pokémon TCG API'; out.weak = r.weak; }
     } catch(e){ out.errors.push(e); }
@@ -2519,7 +2521,7 @@ async function search(){
   if (!name && !num){ setStatus('Inserisci almeno il nome o il numero.', 'err'); return; }
   const lang = $('f-lang').value, rec = current.rec || {};
   // su TCGdex una carta italiana si cerca col nome stampato, se il nome non è stato cambiato a mano
-  const tdName = (lang === 'it' && rec.name_printed && name === cleanName(rec.name_en || '')) ? cleanName(rec.name_printed) : name;
+  const tdName = ((lang === 'it' || lang === 'ja') && rec.name_printed && name === cleanName(rec.name_en || '')) ? cleanName(rec.name_printed) : name;
   setStatus('Cerco nel catalogo carte…');
   current.cands = []; current.sel = null; renderCands(); renderAdd();
   const o = await searchCards(name, num, tot, lang, tdName), found = o.found;
@@ -4567,7 +4569,7 @@ async function runPrep(){
 async function lookupCandidates(rec){
   const lang = {it:'it', en:'en', ja:'ja'}[rec.language] || 'en';
   const num = cleanNum(String(rec.number || '').split('/')[0].trim()), tot = String(rec.printed_total || '').replace(/\D/g, '');
-  const name = cleanName(rec.name_en || rec.name_printed || ''), tdName = lang === 'it' && rec.name_printed ? cleanName(rec.name_printed) : name;
+  const name = cleanName(rec.name_en || rec.name_printed || ''), tdName = (lang === 'it' || lang === 'ja') && rec.name_printed ? cleanName(rec.name_printed) : name;
   const o = await searchCards(name, num, tot, lang, tdName);
   if (!o.found.length && o.errors.length >= 2) throw o.errors[o.errors.length - 1];
   return o.found;
@@ -4576,9 +4578,10 @@ async function lookupCandidates(rec){
 function autoPick(rec, cands){
   if (!rec || cands.length !== 1) return null;
   const c = cands[0];
+  if (rec.language === 'ja' && c.srcLang !== 'ja') return null; // 08/11/2026: niente carte inglesi al posto delle giapponesi
   if (typeof rec.confidence === 'number' && rec.confidence < 0.7) return null;
   if (!rec.number || normNum(cleanNum(String(rec.number))) !== normNum(c.number)) return null;
-  const nz = s => String(s || '').toLowerCase().replace(/[^a-z0-9à-ù]/g, ''), a = nz(rec.name_printed), b = nz(c.name), en = nz(rec.name_en);
+  const nz = s => String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]/gu, ''), a = nz(rec.name_printed), b = nz(c.name), en = nz(rec.name_en);
   if (a && b && !(b.includes(a) || a.includes(b) || (en && (b.includes(en) || en.includes(b))))) return null;
   return c;
 }
