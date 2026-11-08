@@ -1017,6 +1017,17 @@ textarea.note{font:inherit;font-size:.95rem}
 .dock .bar .scan button{width:46px;height:46px;min-height:0;background:var(--surface2);border:1px solid var(--line);color:var(--ink);box-shadow:none}
 .dock .bar .scan button svg{width:22px;height:22px}
 .dock .bar .scan .badge{top:-4px;right:-6px}
+/* barra più vicina al bordo in basso (richiesta dell'utente, 08/11/2026): sull'iPhone entra nella zona della barretta Home
+   e resta 20 px dal fondo (prima 12 px sopra quella zona, cioè ~46 px); senza zona sicura 8 px. Selezione, avvisi e Annulla scendono dello stesso tanto.
+   --safeb è la zona sicura in basso (negli screenshot si può simulare quella dell'iPhone) */
+:root{--safeb:env(safe-area-inset-bottom,0px);--dockb:max(8px,calc(var(--safeb) - 14px))}
+.dock{padding-bottom:var(--dockb)}
+main{padding-bottom:calc(var(--dockb) + 118px)}
+.selmode main{padding-bottom:calc(var(--dockb) + 218px)}
+.inquick main,.inset main{padding-bottom:calc(30px + var(--safeb))}
+.selbar{bottom:calc(var(--dockb) + 86px)}
+#toast{bottom:calc(var(--dockb) + 92px)}
+.undo{bottom:calc(var(--dockb) + 160px)}
 /* Impostazioni in stile pulito (scelte dall'utente, 07/11/2026): stessi gruppi e voci, righe con linee sottili, icone piccole grigie, scelte come testo */
 #v-set .setbar #btn-setdone{min-height:36px;padding:0 2px;background:none;border:0;box-shadow:none;color:var(--ink);font-weight:700;font-size:1rem}
 #v-set .sh{margin:28px 2px 6px;font-size:.8rem;font-weight:500}
