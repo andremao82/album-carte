@@ -750,6 +750,8 @@ textarea.note{font:inherit;font-size:.95rem}
 .cd-ph svg,.pbtn svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 .cd-name{margin:12px 0 2px;text-align:center;font-size:1.45rem;font-weight:800;line-height:1.2}
 .cd-set{text-align:center;font-size:.78rem;color:var(--muted)}
+.cd-jp{text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:2px}
+.mine input.itn{flex:1;min-width:0;min-height:36px;padding:0 6px;border:0;background:none;color:var(--ink);text-align:right;font-size:1rem;outline:none}
 .cd-rar{text-align:center;margin-top:6px}
 .cd-price{margin-top:12px;text-align:center}
 .cd-price .v{font-size:2.75rem;font-weight:800;letter-spacing:-.03em;line-height:1.05;font-variant-numeric:tabular-nums}
@@ -1475,6 +1477,7 @@ function normalizeEntry(e){
   o.img = String(e.img || ''); o.lang = e.lang || 'IT'; o.variant = e.variant || 'Normale'; o.cond = e.cond || 'NM';
   o.qty = Math.max(1, parseInt(e.qty, 10) || 1); o.price = numOrNull(e.price); o.priceManual = numOrNull(e.priceManual);
   o.added = numOrNull(e.added) || Date.now();
+  o.nameJp = String(e.nameJp || ''); // 08/11/2026: nome giapponese stampato (name = nome italiano)
   o.key = e.key || [o.cardId, o.lang, o.variant, o.cond].join('|');
   return o;
 }
@@ -2174,6 +2177,7 @@ function enhancePixels(px, W, H){
 const PROMPT = 'Sei un esperto di carte collezionabili Pokémon. Dall’immagine di UNA carta, già ritagliata e che può essere capovolta, restituisci SOLO un oggetto JSON, senza testo né markdown, con queste chiavi: ' +
   '"name_en" (nome ufficiale in inglese della carta, tradotto se la carta è in italiano o giapponese, mantenendo suffissi come ex, V, VMAX, GX), ' +
   '"name_printed" (nome come stampato), ' +
+  '"name_it" (nome della carta in italiano: per i Pokémon il nome usato in Italia, con i suffissi; per Allenatori, Strumenti, Stadi ed Energie il nome della versione italiana; se non esiste, il nome inglese), ' +
   '"number" (numero di collezione, solo la parte prima della barra, come stampato, es. "025"), ' +
   '"printed_total" (la parte dopo la barra, es. "165"; null se non presente), ' +
   '"language" (it, en, ja oppure other), ' +
@@ -2591,15 +2595,40 @@ function renderAdd(){
   $('ap-add').addEventListener('click', addToCatalog);
 }
 
-function addEntryFromCandidate(c, lang, variant, cond, qty, pm, extra){
+// 08/11/2026: carte giapponesi con il nome in italiano (scelta dell'utente: italiano, sotto il giapponese stampato)
+const hasJp = s => /[\u3040-\u30ff\u3400-\u9fff\uff66-\uff9f]/.test(String(s || ''));
+// nome italiano di un Pokémon giapponese dal Pokédex (in Italia i nomi sono quelli inglesi), con Mega e la sigla finale
+function dexItName(dex, jp){
+  const ns = [...new Set(Array.isArray(dex) ? dex : [])].map(dexName);
+  if (!ns.length || ns.some(n => !n)) return '';
+  const j = String(jp || '').trim(), sg = (j.match(/(VMAX|VSTAR|V-UNION|BREAK|GX|EX|ex|V)$/) || [])[1] || '';
+  return (/^メガ/.test(j) ? 'Mega ' : '') + ns.join(' & ') + (sg ? ' ' + sg : '');
+}
+function itNameOf(c, rec){
+  const ok = v => { v = cleanName(v); return v && !hasJp(v) ? v : ''; };
+  return (rec && ok(rec.name_it)) || dexItName(c.dex, c.name) || (rec && ok(rec.name_en)) || '';
+}
+// carte giapponesi già in collezione: nome italiano dal Pokédex appena i nomi ci sono
+async function fillJpNames(){
+  const todo = catalog.filter(e => hasJp(e.name) && Array.isArray(e.dex) && e.dex.length);
+  if (!todo.length) return 0;
+  try { await loadDexNames(); } catch(err){ return 0; }
+  let n = 0;
+  for (const e of todo){ const it = dexItName(e.dex, e.name); if (it && hasJp(e.name)){ e.nameJp = e.nameJp || e.name; e.name = it; n++; } }
+  if (n){ save(); if (!$('v-card').hidden) renderCard(); else if (!$('v-cat').hidden) renderCatalog(); else if (!$('v-home').hidden) renderHome(); }
+  return n;
+}
+const jpOf = e => e.nameJp || (hasJp(e.name) ? e.name : '');
+const setLabel = e => e.lang === 'JP' && e.setId && hasJp(e.setName) ? e.setId + ' · ' + e.setName : e.setName;
+function addEntryFromCandidate(c, lang, variant, cond, qty, pm, extra, rec){
   const key = [c.id, lang, variant, cond].join('|');
   const ex = catalog.find(x => x.key === key);
   if (ex){ ex.qty += qty; if (pm != null) ex.priceManual = pm; applyPrices(ex, c); }
   else catalog.push({key, cardId:c.id, name:c.name, setName:c.set.name, number:c.number, total:c.set.printedTotal,
     img:(c.images && c.images.small) || '', lang, variant, cond, qty, price:priceFor(c, variant), pr:pricesOf(c), priceT:Date.now(), rarity:c.rarity || '', priceManual:pm, added:Date.now(),
-    ...(c.src === 'tcgdex' ? {src:c.src, srcId:c.srcId, srcLang:c.srcLang, setId:c.setId || ''} : {}), ...(Array.isArray(c.dex) ? {dex:c.dex} : {}), ...(c.cat !== undefined ? {cat:c.cat, tt:c.tt || '', ill:c.ill || ''} : {}), ...(Array.isArray(c.types) ? {types:normTypes(c.types)} : {}), ...(extra || {})});
+    ...(c.src === 'tcgdex' ? {src:c.src, srcId:c.srcId, srcLang:c.srcLang, setId:c.setId || ''} : {}), ...(Array.isArray(c.dex) ? {dex:c.dex} : {}), ...(c.cat !== undefined ? {cat:c.cat, tt:c.tt || '', ill:c.ill || ''} : {}), ...(Array.isArray(c.types) ? {types:normTypes(c.types)} : {}), ...(hasJp(c.name) ? {name:itNameOf(c, rec) || c.name, nameJp:c.name} : {}), ...(extra || {})});
   const ne = catalog.find(x => x.key === key); if (ne) recordPrice(ne);
-  save(); if (ne && needsImage(ne)) setTimeout(fillMissingImages, 0); return key;
+  save(); if (ne && needsImage(ne)) setTimeout(fillMissingImages, 0); if (ne && hasJp(ne.name)) setTimeout(fillJpNames, 0); return key;
 }
 function addToCatalog(){
   const c = current.cands[current.sel];
@@ -2607,7 +2636,7 @@ function addToCatalog(){
   const qty = Math.max(1, parseInt($('ap-qty').value, 10) || 1);
   const pm = parsePrice($('ap-pm').value);
   const est = condEstimate(current.rec), rj = reviewJobId;
-  const key = addEntryFromCandidate(c, lang, variant, cond, qty, pm, est && cond === est.code ? {condEst:1, condNote:est.notes} : {});
+  const key = addEntryFromCandidate(c, lang, variant, cond, qty, pm, est && cond === est.code ? {condEst:1, condNote:est.notes} : {}, current.rec);
   if (rj && wantsOwnPhoto(c)){ const j = qJobs.find(x => x.id === rj); if (j) attachPhoto(key, j.raw || j.crop, j.photo, j.quad); }
   toast('Aggiunta al catalogo');
   resetScan();
@@ -2943,7 +2972,7 @@ const albumSort = () => ALBUM_SORTS.includes(cfg.albumSort) ? cfg.albumSort : 'r
 const numOf = e => parseInt(String(e.number).replace(/\D/g, ''), 10) || 0;
 function matchesQuery(e, q){
   if (!q) return true;
-  return e.name.toLowerCase().includes(q) || (e.setName || '').toLowerCase().includes(q) || String(e.number).toLowerCase() === q ||
+  return e.name.toLowerCase().includes(q) || (e.nameJp || '').toLowerCase().includes(q) || (e.setId || '').toLowerCase() === q || (e.setName || '').toLowerCase().includes(q) || String(e.number).toLowerCase() === q ||
     String(e.ill || '').toLowerCase().includes(q) || String(e.note || '').toLowerCase().includes(q);
 }
 function sortAlbum(list, sort){
@@ -2958,7 +2987,7 @@ function entryRow(e, chk){
   if (e.variant !== 'Normale') chips.push('<span class="chip2 o">' + esc(e.variant) + '</span>');
   if (e.cond !== 'NM') chips.push('<span class="chip2 b">' + esc(e.cond) + '</span>');
   if (e.qty > 1) chips.push('<span class="chip2 g">×' + e.qty + '</span>');
-  return (chk || '') + artHtml(e, ' sm') + '<div class="body"><div class="nm">' + esc(e.name) + '</div><div class="meta">' + esc(setLine(e.setName, e.number, e.total)) + '</div><div class="chips2">' + chips.join('') + '</div></div>' +
+  return (chk || '') + artHtml(e, ' sm') + '<div class="body"><div class="nm">' + esc(e.name) + '</div><div class="meta">' + esc(setLine(setLabel(e), e.number, e.total)) + '</div><div class="chips2">' + chips.join('') + '</div></div>' +
     '<div class="er">' + (u != null ? '<b>' + eur(u * e.qty) + '</b>' + (e.qty > 1 ? '<span>' + eur(u) + ' cad.</span>' : '') +
       (ch != null && Math.abs(ch) >= 0.5 ? '<span style="color:' + (ch >= 0 ? 'var(--ok)' : 'var(--danger)') + ';font-weight:600">' + signedPct(ch) + '</span>' : '') : '<span>—</span>') + '</div>';
 }
@@ -3104,7 +3133,7 @@ function renderCard(){
     '<button class="rbtn glass" type="button" data-a="menu" aria-label="Altre azioni">' + ICON_MORE + '</button></div>' +
     '<div id="cd-sw"><div id="cd-mv">' +
     // stile pulito (07/11/2026): set e rarità in alto, sopra l'immagine; il nome sta al centro della barra (caso A, 07/11)
-    '<div class="cd-ttl"><div class="cd-set">' + esc(setLine(e.setName, e.number, e.total)) + '</div>' +
+    '<div class="cd-ttl">' + (e.nameJp && e.nameJp !== e.name ? '<div class="cd-jp" lang="ja">' + esc(e.nameJp) + '</div>' : '') + '<div class="cd-set">' + esc(setLine(setLabel(e), e.number, e.total)) + '</div>' +
     (rarityName(e.rarity) ? '<div class="cd-rar"><span class="chip2 p">' + esc(rarityName(e.rarity)) + '</span></div>' : '') + '</div>' +
     '<div class="cd-stage"><div id="cd-tilt" class="cd-card art' + holoCls(e) + '" data-ini="' + esc(iniOf(e.name)) + '"' + (art ? ' role="button" tabindex="0" aria-label="Ingrandisci l’immagine"' : '') + '>' +
       (e.number ? '<em class="nn">' + esc(e.number) + '</em>' : '') + (art ? '<img id="cd-img" src="' + esc(art) + '" alt="' + esc(e.name) + '">' : '') + '</div></div>' +
@@ -3119,6 +3148,7 @@ function renderCard(){
     lbl2('Condizione', condName) + '<div class="cp" role="group" aria-label="Condizione">' + CONDS.map(c => '<button type="button" data-ed="cond" data-v="' + c[0] + '" aria-pressed="' + (e.cond === c[0]) + '" aria-label="' + esc(c[1]) + '">' + c[0] + '</button>').join('') + '</div>' +
     (e.condEst && e.condNote ? '<p class="cd-est">✦ Stimata dalla foto: ' + esc(e.condNote) + '</p>' : '') +
     '<div class="pnl mine"><div class="mr"><span>Quantità</span><span class="qctl"><button class="qb" type="button" data-a="qminus" aria-label="Una in meno"' + (e.qty <= 1 ? ' disabled' : '') + '>−</button><b>' + e.qty + '</b><button class="qb" type="button" data-a="qplus" aria-label="Una in più">+</button></span></div>' +
+      (jpOf(e) ? '<div class="mr"><label for="cd-it">Nome italiano</label><input id="cd-it" class="itn" autocomplete="off" placeholder="' + esc(jpOf(e)) + '" value="' + esc(hasJp(e.name) ? '' : e.name) + '"></div>' : '') +
       '<div class="mr"><label for="cd-pm">Prezzo mio</label><span class="pmw"><input id="cd-pm" inputmode="decimal" autocomplete="off" placeholder="non impostato" value="' + (e.priceManual != null ? e.priceManual.toFixed(2).replace('.', ',') : '') + '">€</span></div>' +
       (info ? '<div class="mr sub"><span>Mercato (Near Mint)</span><span>' + eur(info.v) + (info.approx ? ' circa' : '') + '</span></div>' : '') +
       (e.priceManual == null && e.price != null && e.cond !== 'NM' ? '<div class="mr sub"><span>Con la condizione ' + esc(e.cond) + '</span><span>' + eur(u) + '</span></div>' : '') + '</div>';
@@ -3453,6 +3483,13 @@ $('v-card').addEventListener('change', ev => {
   const e = entryByKey(cardKey); if (!e) return;
   const t = ev.target;
   if (t.id === 'cd-note'){ const v = t.value.trim(); if (v !== (e.note || '')){ e.note = v; save(); } }
+  else if (t.id === 'cd-it'){
+    // nome italiano di una giapponese: vale per tutte le copie della stessa carta; vuoto = torna il nome giapponese
+    const v = cleanName(t.value), jp = jpOf(e); if (!jp) return;
+    const nm = v || jp; if (nm === e.name) return;
+    catalog.filter(x => x.cardId === e.cardId && jpOf(x)).forEach(x => { x.nameJp = jpOf(x); x.name = nm; });
+    save(); toast(v ? 'Nome salvato' : 'Torna il nome giapponese'); renderCard();
+  }
   else if (t.id === 'cd-pm'){
     const raw = t.value.trim();
     if (!raw){ if (e.priceManual != null){ e.priceManual = null; save(); renderCard(); } return; }
@@ -4599,7 +4636,7 @@ function ownedOf(rec, cands){
 function addAuto(job, c){
   const rec = job.rec, {est, cond, lang, variant, key} = autoKeyOf(rec, c);
   const prev = catalog.find(x => x.key === key), existed = !!prev, had = prev ? (prev.qty || 1) : 0;
-  addEntryFromCandidate(c, lang, variant, cond, 1, null, est ? {condEst:1, condNote:est.notes} : {});
+  addEntryFromCandidate(c, lang, variant, cond, 1, null, est ? {condEst:1, condNote:est.notes} : {}, rec);
   if (wantsOwnPhoto(c)) attachPhoto(key, job.raw || job.crop, job.photo, job.quad);
   Object.assign(job, {status:'added', key, existed, had, name:c.name, setName:c.set.name, number:c.number, total:c.set.printedTotal, cond, img:(c.images && c.images.small) || '', crop:null, raw:null, photo:null, msg:''});
   jobDrop(job.id);
@@ -5184,6 +5221,7 @@ if (navigator.onLine !== false) refreshFx();
 askPersist();
 loadPhotos();
 if (navigator.onLine !== false) setTimeout(fillMissingImages, 1500);
+if (navigator.onLine !== false) setTimeout(fillJpNames, 2000);
 // prezzi: una volta al giorno, all'apertura o al ritorno nell'app (su iPhone la Web Clip spesso riprende senza ricaricarsi)
 setTimeout(autoRefreshPrices, 4000);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') setTimeout(autoRefreshPrices, 1500); });
