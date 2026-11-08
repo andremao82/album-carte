@@ -59,8 +59,8 @@ const row=(t,re)=>[...t.d.querySelectorAll('#q-list .qrow')].find(r=>re.test(r.t
  assert.ok(await until(()=>vis(t,'qedge')),'editor aperto');
  assert.strictEqual(t.calls.claude,0,'nessuna lettura prima della correzione');
  assert.match(txt(t,'#qe-msg'),/Non trovo bene i bordi/);
- await until(()=>/Altre 1 foto/.test(txt(t,'#qe-more')));
- assert.match(txt(t,'#qe-more'),/Altre 1 foto in attesa/);
+ await until(()=>/altra foto/.test(txt(t,'#qe-more')));
+ assert.match(txt(t,'#qe-more'),/Un’altra foto in attesa/); // al singolare dall'08/11/2026
  assert.match(txt(t,'#q-stats'),/Da controllare 2/);
  assert.strictEqual(t.d.querySelectorAll('#q-list [data-q="edges"]').length,2,'tasto Correggi bordi sulle righe');
  assert.match(txt(t,'#q-list'),/Bordi da controllare/);

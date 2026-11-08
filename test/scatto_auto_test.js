@@ -1,6 +1,8 @@
 // 23/10/2026: Scansione rapida con scatto automatico. Chromium vero, fotocamera finta (canvas.captureStream) che mostra
 // una scena disegnata: muro vuoto, poi una carta ferma (riquadro, anello di attesa, scatto da solo), carta che resta
-// (nessun secondo scatto), carta tolta e un'altra (secondo scatto), carta che si muove (niente scatto), tasto Auto spento.
+// (nessun secondo scatto), carta tolta e un'altra (secondo scatto), carta che si muove (niente scatto).
+// Dall'08/11/2026 niente pulsante di scatto né tasto Auto: lo scatto è sempre automatico, anche con la vecchia
+// impostazione autoShot:false salvata (qui la si mette apposta).
 // Dal 23/10 sera: anello che avanza in modo continuo (campionato a ogni fotogramma), riquadro che scivola senza salti,
 // spunta per 1 secondo dopo lo scatto e poi "Inquadra la prossima carta".
 // Verifiche vere: il test si ferma al primo errore.
@@ -17,7 +19,7 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     const page=await browser.newPage(); await page.setViewport({width:390,height:844,deviceScaleFactor:1,isMobile:true});
     const errs=[]; page.on('pageerror',e=>errs.push(e.message));
     await page.evaluateOnNewDocument(()=>{
-      localStorage.setItem('pkm_cfg',JSON.stringify({provider:'claude',key:'',confirmEdges:false}));
+      localStorage.setItem('pkm_cfg',JSON.stringify({provider:'claude',key:'',confirmEdges:false,autoShot:false}));
       localStorage.setItem('pkm_lastbackup',JSON.stringify(Date.now()));
       // fotocamera finta: una tela 720×1280 ridisegnata 10 volte al secondo; window.__scena decide cosa c'è davanti
       const W=720,H=1280, cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
@@ -36,12 +38,12 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     await page.evaluate(()=>{ document.getElementById('fab').click(); document.querySelector('[data-ad="quick"]').click(); });
     const rows=()=>page.evaluate(()=>document.querySelectorAll('#q-list .qrow').length);
     const st=()=>page.evaluate(()=>({hint:document.getElementById('q-hint').hidden?'':document.getElementById('q-hint').textContent,live:(()=>{ const e=document.getElementById('q-live'), r=e.getBoundingClientRect(); return !e.hasAttribute('hidden')&&getComputedStyle(e).display!=='none'&&r.width>50; })(),hold:!document.getElementById('q-hold').hidden,
-      off:+getComputedStyle(document.querySelector('#q-hold .fg')).strokeDashoffset.replace('px',''),done:document.getElementById('q-hold').classList.contains('done'),okOp:+getComputedStyle(document.querySelector('#q-hold .ok')).opacity,auto:document.getElementById('q-auto').getAttribute('aria-pressed')}));
+      off:+getComputedStyle(document.querySelector('#q-hold .fg')).strokeDashoffset.replace('px',''),done:document.getElementById('q-hold').classList.contains('done'),okOp:+getComputedStyle(document.querySelector('#q-hold .ok')).opacity,auto:!!document.getElementById('q-auto'),shot:!!document.getElementById('q-shot')||!!document.querySelector('#v-quick .shutter'),cam:!!document.querySelector('#v-quick [data-q="cam"]')}));
     let ready=false; for(let i=0;i<40&&!ready;i++){ await wait(100); ready=await page.evaluate(()=>document.getElementById('q-video').videoWidth>0); }
     ok(ready,'fotocamera (finta) accesa');
     console.log('1 muro vuoto: nessuno scatto');
     await wait(1500); let x=await st();
-    ok(x.auto==='true','tasto Auto acceso di serie'); ok(/scatto da solo/.test(x.hint),'avviso: '+x.hint); ok(!x.live&&!x.hold,'nessun riquadro senza carta'); ok(await rows()===0,'nessuna foto in coda');
+    ok(!x.auto&&!x.shot&&!x.cam,'niente tasto Auto, pulsante di scatto e tasto Fotocamera'); ok(/scatto da solo/.test(x.hint),'avviso: '+x.hint); ok(!x.live&&!x.hold,'nessun riquadro senza carta'); ok(await rows()===0,'nessuna foto in coda');
 
     console.log('2 carta ferma: riquadro, anello che si riempie, scatto da solo');
     await page.evaluate(()=>{ window.__scena.card='a'; });
@@ -88,18 +90,13 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     shot=false; for(let i=0;i<30&&!shot;i++){ await wait(100); shot=(await rows())===3; }
     ok(shot,'appena ferma, scatta');
 
-    console.log('6 tasto Auto spento: si scatta solo col pulsante giallo');
+    console.log('6 vecchia impostazione Auto spento: non conta più, lo scatto resta automatico');
+    ok(JSON.parse(await page.evaluate(()=>localStorage.getItem('pkm_cfg'))).autoShot===false,'impostazione vecchia ancora salvata');
     await page.evaluate(()=>{ window.__scena.card=null; }); await wait(1000);
-    await page.evaluate(()=>document.getElementById('q-auto').click());
-    x=await st(); ok(x.auto==='false','Auto spento'); ok(!x.hint,'avviso nascosto');
-    ok(JSON.parse(await page.evaluate(()=>localStorage.getItem('pkm_cfg'))).autoShot===false,'scelta ricordata');
-    await page.evaluate(()=>{ window.__scena.card='b'; }); await wait(2500);
-    ok(await rows()===3,'con Auto spento non scatta da solo'); x=await st(); ok(!x.live,'niente riquadro con Auto spento');
-    await page.evaluate(()=>document.getElementById('q-shot').click()); await wait(300);
-    ok(await rows()===4,'il pulsante giallo scatta ancora');
-    await page.evaluate(()=>document.getElementById('q-auto').click()); await wait(200);
-    x=await st(); ok(x.auto==='true','Auto riacceso');
-    await wait(2500); ok(await rows()===4,'riacceso con la carta già scattata a mano: non la riscatta');
+    await page.evaluate(()=>{ window.__scena.card='b'; });
+    shot=false; for(let i=0;i<40&&!shot;i++){ await wait(100); shot=(await rows())===4; }
+    ok(shot,'carta nuova scattata da sola');
+    await wait(1500); // finisce la spunta dello scatto prima della prova successiva
     console.log('7 carta che scorre a scatti nel video: il riquadro la segue senza saltare');
     await page.evaluate(()=>{ window.__scena.card=null; }); await wait(800);
     await page.evaluate(()=>{ window.__scena.card='a'; window.__scena.dx=-120; window.__slide=setInterval(()=>{ window.__scena.dx=Math.min(120,window.__scena.dx+30); },150); });

@@ -71,12 +71,12 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     ok(await vis('v-quick')&&!(await vis('v-card')),'vista fotocamera aperta');
     const ui=await page.evaluate(()=>({t:document.getElementById('q-title').textContent,cls:document.body.classList.contains('qphoto'),
       list:getComputedStyle(document.getElementById('q-list')).display,stats:getComputedStyle(document.getElementById('q-stats')).display,
-      gal:getComputedStyle(document.querySelector('#v-quick [data-q="gallery"]')).visibility,cam:getComputedStyle(document.querySelector('#v-quick [data-q="cam"]')).visibility,
-      shot:getComputedStyle(document.getElementById('q-shot')).visibility,auto:document.getElementById('q-auto').getAttribute('aria-pressed')}));
+      gal:getComputedStyle(document.querySelector('#v-quick [data-q="gallery"]')).display,cam:!!document.querySelector('#v-quick [data-q="cam"]'),
+      shot:!!document.getElementById('q-shot'),auto:!!document.getElementById('q-auto')}));
     ok(ui.t==='Foto della carta','titolo "Foto della carta"'); ok(ui.cls,'classe qphoto sul body');
     ok(ui.list==='none'&&ui.stats==='none','niente coda né conteggi');
-    ok(ui.gal==='hidden'&&ui.cam==='hidden'&&ui.shot==='visible','solo il pulsante di scatto (Galleria e Fotocamera nascosti)');
-    ok(ui.auto==='true','scatto automatico acceso');
+    // dall'08/11/2026 niente pulsanti: lo scatto è solo automatico; l'icona Galleria non c'è (il menu Foto ha già la galleria)
+    ok(ui.gal==='none'&&!ui.cam&&!ui.shot&&!ui.auto,'nessun pulsante: niente Galleria, Fotocamera, scatto né Auto');
     await wait(1200); ok(await vis('v-quick')&&!(await vis('qedge')),'muro vuoto: nessuno scatto');
 
     console.log('4 carta ferma: riquadro dal vivo, scatto da solo, editor dei bordi sulla scheda');
@@ -106,17 +106,17 @@ const wait=ms=>new Promise(r=>setTimeout(r,ms));
     await page.evaluate(()=>document.querySelectorAll('#act-sheet .actbtn')[1].click());
     ready=false; for(let i=0;i<40&&!ready;i++){ await wait(100); ready=await page.evaluate(()=>document.getElementById('q-video').videoWidth>0&&!document.getElementById('v-quick').hidden); }
     ok(ready,'fotocamera riaperta');
-    await wait(300); await page.evaluate(()=>document.getElementById('q-shot').click());
-    ed=false; for(let i=0;i<20&&!ed;i++){ await wait(100); ed=await vis('qedge'); }
-    ok(ed,'pulsante giallo: scatta e apre l’editor (anche senza bordi trovati)');
+    await page.evaluate(()=>{ window.__carta=true; });
+    ed=false; for(let i=0;i<40&&!ed;i++){ await wait(100); ed=await vis('qedge'); }
+    ok(ed,'scattata da sola: si apre l’editor');
     await page.evaluate(()=>document.querySelector('#qedge [data-qe="discard"]').click()); await wait(300);
     ok(!(await vis('qedge'))&&await vis('v-card'),'Annulla: di nuovo sulla scheda');
     ok((await entry('c2|IT|Normale|NM')).photo===saved.photo,'foto invariata');
 
     console.log('6 la Scansione rapida normale non cambia');
     await page.evaluate(()=>{ document.getElementById('fab').click(); document.querySelector('[data-ad="quick"]').click(); }); await wait(600);
-    const sq=await page.evaluate(()=>({t:document.getElementById('q-title').textContent,cls:document.body.classList.contains('qphoto'),gal:getComputedStyle(document.querySelector('#v-quick [data-q="gallery"]')).visibility}));
-    ok(sq.t==='Scansione rapida'&&!sq.cls&&sq.gal==='visible','titolo, Galleria e coda come prima');
+    const sq=await page.evaluate(()=>({t:document.getElementById('q-title').textContent,cls:document.body.classList.contains('qphoto'),gal:getComputedStyle(document.querySelector('#v-quick [data-q="gallery"]')).display}));
+    ok(sq.t==='Scansione rapida'&&!sq.cls&&sq.gal!=='none','titolo, icona Galleria e coda come prima');
     await page.evaluate(()=>{ window.__carta=true; });
     let rows=0; for(let i=0;i<40&&!rows;i++){ await wait(100); rows=await page.evaluate(()=>document.querySelectorAll('#q-list .qrow').length); }
     ok(rows===1&&!(await vis('qedge')),'lo scatto automatico va in coda, non nell’editor della foto');
