@@ -1015,7 +1015,8 @@ textarea.note{font:inherit;font-size:.95rem}
 .dock .bar button{min-height:46px;color:var(--muted)}
 .dock .bar button span{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
 .dock .bar button[aria-current=true]{background:none;color:var(--ink)}
-.dock .bar .scan button{width:46px;height:46px;min-height:0;color:var(--on-accent);box-shadow:none}
+/* tasto di scansione neutro, non giallo: si confondeva con la sezione attiva (scelta dell'utente, 07/11/2026, variante A) */
+.dock .bar .scan button{width:46px;height:46px;min-height:0;background:var(--surface2);border:1px solid var(--line);color:var(--ink);box-shadow:none}
 .dock .bar .scan button svg{width:22px;height:22px}
 .dock .bar .scan .badge{top:-4px;right:-6px}
 /* Impostazioni in stile pulito (scelte dall'utente, 07/11/2026): stessi gruppi e voci, righe con linee sottili, icone piccole grigie, scelte come testo */
@@ -2882,7 +2883,7 @@ function bindTilt(el, onTap){
   return !still;
 }
 const needsReview = () => { try { return qJobs.filter(j => j.status === 'review' || j.status === 'error' || j.status === 'edges').length; } catch(err){ return 0; } };
-// numero delle carte da controllare sul tasto giallo della barra
+// numero delle carte da controllare sul tasto di scansione della barra
 function updateScanBadge(){
   const b = $('fab-n'), n = needsReview(); if (!b) return;
   b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n);

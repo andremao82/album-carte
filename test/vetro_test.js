@@ -38,7 +38,7 @@ const go=async(t,tab)=>{ $(t,`nav button[data-go="${tab}"]`).click(); await wait
  const t=boot(seed()); await wait(250);
  ok(!$(t,'#orb'),'la lente fluttuante non c’è più');
  const navKids=[...$(t,'nav.bar').children]; ok(navKids.length===5,'barra a 5 posti');
- ok(navKids[2].classList.contains('scan')&&navKids[2].querySelector('#fab'),'tasto giallo al centro della barra');
+ ok(navKids[2].classList.contains('scan')&&navKids[2].querySelector('#fab'),'tasto di scansione al centro della barra');
  ok($$(t,'nav button[data-go]').map(b=>b.dataset.go).join(',')==='home,cat,sets,dex','4 schede con data-go nell’ordine giusto');
  for(const tab of ['home','cat','sets','dex']){ await go(t,tab); ok(!$(t,'#fab').hidden&&!t.d.body.classList.contains('inquick'),'tasto giallo visibile nella scheda '+tab); }
  ok($(t,'#fab-n').hidden&&$(t,'#fab').getAttribute('aria-label')==='Scansiona una carta','senza carte da controllare il numero sul tasto è nascosto');
