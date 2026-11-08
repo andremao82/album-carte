@@ -1,5 +1,5 @@
 // 08/11/2026: Scansione rapida ed editor dei bordi in stile pulito (scelte dell'utente: variante B senza pulsanti sotto il video).
-// Niente pulsante di scatto, tasto Auto, Galleria e Fotocamera: lo scatto è solo automatico, l'icona della galleria sta nel video
+// Niente pulsante di scatto, tasto Auto, Galleria e Fotocamera: lo scatto è solo automatico, l'icona della galleria sta nella barra in alto a destra, fuori dal video (dall'08/11/2026)
 // (in alto a destra); senza fotocamera accesa (coda aperta da Aggiungi, o fotocamera che non parte) un tocco sul video la apre.
 // Elenco senza riquadri né gialli, editor dei bordi con le azioni a parole e Conferma bianco, "Un'altra foto in attesa".
 // Chromium vero, entrambi i temi.
@@ -38,20 +38,22 @@ const transparent=c=>c==='rgba(0, 0, 0, 0)'||c==='transparent';
       },theme);
       await page.goto(P.APP_URL); await wait(500);
 
-      console.log('1 fotocamera senza pulsanti, icona della galleria nel video');
+      console.log('1 fotocamera senza pulsanti, icona della galleria in alto a destra fuori dal video');
       await page.evaluate(()=>{ document.getElementById('fab').click(); document.querySelector('[data-ad="quick"]').click(); });
       let ready=false; for(let i=0;i<30&&!ready;i++){ await wait(100); ready=await page.evaluate(()=>document.getElementById('q-video').videoWidth>0); }
       ok(ready,'fotocamera (finta) accesa');
-      const ui=await page.evaluate(()=>{ const cam=document.getElementById('q-cam'), gal=document.querySelector('#v-quick [data-q="gallery"]'), cr=cam.getBoundingClientRect(), gr=gal?gal.getBoundingClientRect():null;
+      const ui=await page.evaluate(()=>{ const top=document.querySelector('#v-quick > .cd-top'), back=top.querySelector('[data-q="back"]').getBoundingClientRect(), ttl=document.getElementById('q-title').getBoundingClientRect(), cam=document.getElementById('q-cam'), gal=document.querySelector('#v-quick [data-q="gallery"]'), cr=cam.getBoundingClientRect(), gr=gal?gal.getBoundingClientRect():null;
         return {shot:!!document.getElementById('q-shot')||!!document.querySelector('#v-quick .shutter,#v-quick [data-q="shot"]'), auto:!!document.getElementById('q-auto')||!!document.querySelector('#v-quick [data-q="auto"]'),
           cam:!!document.querySelector('#v-quick [data-q="cam"]'), row:!!document.querySelector('#v-quick .qbtns'), galN:document.querySelectorAll('#v-quick [data-q="gallery"]').length,
-          inCam:!!gal&&cam.contains(gal), label:gal&&gal.getAttribute('aria-label'), text:gal&&gal.textContent.trim(), svg:!!gal&&!!gal.querySelector('svg'),
+          inCam:!!gal&&cam.contains(gal), inTop:!!gal&&top.contains(gal), below:gr&&cr.top-gr.bottom, sameRow:gr&&Math.abs((gr.top+gr.bottom)/2-(back.top+back.bottom)/2), centre:Math.abs((ttl.left+ttl.right)/2-innerWidth/2), sameSize:gr&&gr.width===back.width, label:gal&&gal.getAttribute('aria-label'), text:gal&&gal.textContent.trim(), svg:!!gal&&!!gal.querySelector('svg'),
           dx:gr&&cr.right-gr.right, dy:gr&&gr.top-cr.top, w:gr&&gr.width, h:gr&&gr.height, disp:gal&&getComputedStyle(gal).display,
           statTop:document.getElementById('q-stats').getBoundingClientRect().top, camBottom:cr.bottom, camBorder:getComputedStyle(cam).borderTopWidth}; });
       ok(!ui.shot,'niente pulsante di scatto'); ok(!ui.auto,'niente tasto Auto'); ok(!ui.cam,'niente tasto Fotocamera'); ok(!ui.row,'niente fila di tasti sotto il video');
-      ok(ui.galN===1&&ui.inCam,'una sola icona Galleria, dentro il video');
+      ok(ui.galN===1&&!ui.inCam&&ui.inTop,'una sola icona Galleria, nella barra in alto e non nel video');
       ok(ui.svg&&!ui.text&&/galleria/i.test(ui.label||''),'icona senza scritta, con nome per VoiceOver ('+ui.label+')');
-      ok(ui.dx>=6&&ui.dx<=20&&ui.dy>=6&&ui.dy<=20,'in alto a destra nel video ('+ui.dx+', '+ui.dy+')');
+      ok(ui.dx>=-1&&ui.dx<=1&&ui.below>=0,'in alto a destra, allineata al bordo destro del video e sopra il video ('+ui.dx+', '+ui.below+')');
+      ok(ui.sameRow<=1&&ui.sameSize,'sulla stessa riga e grande come il tasto Indietro');
+      ok(ui.centre<=2,'titolo ancora centrato ('+ui.centre+' px)');
       ok(ui.w>=44&&ui.h>=44&&ui.disp!=='none','grande abbastanza per il dito ('+ui.w+'×'+ui.h+')');
       ok(ui.statTop-ui.camBottom<=24,'i conteggi seguono subito il video ('+Math.round(ui.statTop-ui.camBottom)+' px)');
       ok(ui.camBorder==='0px','video senza bordo');
