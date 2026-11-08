@@ -1213,6 +1213,7 @@ main{padding-bottom:calc(var(--dockb) + 118px)}
       <option value="name">Nome</option>
       <option value="value">Valore</option>
       <option value="set">Set</option>
+      <option value="qty">Copie</option>
     </select></span>
     <div class="vsw" role="group" aria-label="Vista">
       <button id="v-grid" type="button" aria-label="Griglia" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="6" height="6" rx="1.2"/><rect x="14" y="4" width="6" height="6" rx="1.2"/><rect x="4" y="14" width="6" height="6" rx="1.2"/><rect x="14" y="14" width="6" height="6" rx="1.2"/></svg></button>
@@ -2968,7 +2969,7 @@ function renderScanQueue(){
 }
 
 /* ---------- Collezione (come la nativa) ---------- */
-const ALBUM_SORTS = ['recent', 'name', 'value', 'set'];
+const ALBUM_SORTS = ['recent', 'name', 'value', 'set', 'qty'];
 const albumSort = () => ALBUM_SORTS.includes(cfg.albumSort) ? cfg.albumSort : 'recent';
 const numOf = e => parseInt(String(e.number).replace(/\D/g, ''), 10) || 0;
 function matchesQuery(e, q){
@@ -2980,6 +2981,7 @@ function sortAlbum(list, sort){
   const line = e => { const u = unit(e); return u == null ? -1 : u * e.qty; };
   return list.sort(sort === 'value' ? (a, b) => line(b) - line(a)
     : sort === 'name' ? (a, b) => a.name.localeCompare(b.name, 'it', {sensitivity:'base'})
+    : sort === 'qty' ? (a, b) => (b.qty || 0) - (a.qty || 0) || (b.added || 0) - (a.added || 0)
     : sort === 'set' ? (a, b) => (a.setName || '').localeCompare(b.setName || '') || numOf(a) - numOf(b)
     : (a, b) => (b.added || 0) - (a.added || 0));
 }
