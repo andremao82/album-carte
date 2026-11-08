@@ -752,6 +752,11 @@ textarea.note{font:inherit;font-size:.95rem}
 .cd-name{margin:12px 0 2px;text-align:center;font-size:1.45rem;font-weight:800;line-height:1.2}
 .cd-set{text-align:center;font-size:.78rem;color:var(--muted)}
 .cd-jp{text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:2px}
+/* 08/11/2026: aggiunta a mano di una carta che non è in nessun catalogo */
+.manq{margin:16px 0 8px}
+.manq .muted{margin:0 0 10px}
+#man-form .muted{margin:4px 0 12px}
+#man-form .lnk{display:block;margin:14px auto 0}
 .mine input.itn{flex:1;min-width:0;min-height:36px;padding:0 6px;border:0;background:none;color:var(--ink);text-align:right;font-size:1rem;outline:none}
 .cd-rar{text-align:center;margin-top:6px}
 .cd-price{margin-top:12px;text-align:center}
@@ -1201,6 +1206,7 @@ main{padding-bottom:calc(var(--dockb) + 118px)}
 
   <div id="cands" style="margin-top:14px"></div>
   <div id="addpanel"></div>
+  <div id="manadd"></div>
 </section>
 
 <section id="v-cat" class="view" hidden>
@@ -2182,6 +2188,7 @@ const PROMPT = 'Sei un esperto di carte collezionabili Pokémon. Dall’immagine
   '"name_it" (nome della carta in italiano: per i Pokémon il nome usato in Italia, con i suffissi; per Allenatori, Strumenti, Stadi ed Energie il nome della versione italiana; se non esiste, il nome inglese), ' +
   '"number" (numero di collezione, solo la parte prima della barra, come stampato, es. "025"), ' +
   '"printed_total" (la parte dopo la barra, es. "165"; null se non presente), ' +
+  '"set_code" (sigla del set stampata in basso a sinistra, es. "SV7a", "MEW", "cs6bC"; null se non c’è), ' +
   '"language" (it, en, ja oppure other), ' +
   '"variant_hint" (normal, holo, reverse oppure unknown), ' +
   '"confidence" (numero da 0 a 1). ' +
@@ -2529,18 +2536,18 @@ async function search(){
   // su TCGdex una carta italiana si cerca col nome stampato, se il nome non è stato cambiato a mano
   const tdName = ((lang === 'it' || lang === 'ja') && rec.name_printed && name === cleanName(rec.name_en || '')) ? cleanName(rec.name_printed) : name;
   setStatus('Cerco nel catalogo carte…');
-  current.cands = []; current.sel = null; renderCands(); renderAdd();
+  current.cands = []; current.sel = null; current.searched = true; renderCands(); renderAdd(); renderManual();
   const o = await searchCards(name, num, tot, lang, tdName), found = o.found;
   current.cands = found;
   if (!found.length){
     setStatus(o.errors.length >= 2 || (o.errors[0] && o.errors[0].net) ? 'Catalogo carte non raggiungibile in questo momento: ' + o.errors[o.errors.length - 1].message + ' Riprova tra poco.'
-      : 'Nessuna carta trovata. Prova con meno parole o senza il totale del set.', 'err');
-    return;
+      : 'Nessuna carta trovata. Prova con meno parole o senza il totale del set, oppure aggiungila a mano.', 'err');
+    renderManual(); return;
   }
   setStatus(o.weak ? 'Nessuna carta con questo nome e questo numero: ecco le più vicine. Controlla nome, numero e totale. (fonte: ' + o.source + ')'
     : (found.length === 1 ? 'Trovata una carta. Controlla e aggiungi.' : 'Trovate ' + found.length + ' carte. Tocca quella giusta.') + ' (fonte: ' + o.source + ')', o.weak ? 'err' : 'ok');
   if (found.length === 1 && !o.weak) current.sel = 0;
-  renderCands(); renderAdd();
+  renderCands(); renderAdd(); renderManual();
 }
 
 function renderCands(){
@@ -2552,7 +2559,7 @@ function renderCands(){
 }
 $('cands').addEventListener('click', e => {
   const b = e.target.closest('.cand'); if (!b) return;
-  current.sel = parseInt(b.dataset.i, 10); renderCands(); renderAdd();
+  current.sel = parseInt(b.dataset.i, 10); manOpen = false; renderCands(); renderAdd(); renderManual();
   $('addpanel').scrollIntoView({behavior:'smooth', block:'nearest'});
 });
 
@@ -2566,6 +2573,66 @@ function condEstimate(r){
   const cf = typeof r.condition_confidence === 'number' ? r.condition_confidence : 0.5;
   return cf < 0.35 ? null : {code, notes:String(r.condition_notes || '').slice(0, 90), cf};
 }
+/* 08/11/2026: aggiunta a mano (scelta dell'utente) per le carte che non sono in nessun catalogo (es. cinesi): dati letti dalla foto,
+   tutti modificabili, la foto come immagine, niente prezzo di mercato (solo il prezzo mio). src = 'man', cardId = 'man:<id>'. */
+let manOpen = false;
+const isManual = e => !!e && e.src === 'man';
+function manDefaults(){
+  const r = current.rec || {}, ok = v => cleanName(v == null ? '' : String(v)), latin = v => { v = ok(v); return v && !hasJp(v) ? v : ''; };
+  const name = latin(r.name_it) || latin(r.name_en) || ok($('f-name').value) || ok(r.name_printed), pr = ok(r.name_printed);
+  let num = ok(r.number || $('f-num').value), tot = ok(r.printed_total || $('f-tot').value);
+  if (num.includes('/')){ const q = num.split('/'); num = q[0].trim(); if (!tot) tot = q[1]; }
+  const L = {it:'IT', en:'EN', ja:'JP'}, est = condEstimate(r);
+  return {name, printed:pr && pr !== name ? pr : '', set:ok(r.set_code), num, tot:tot.replace(/\D/g, ''),
+    lang:current.rec ? (L[r.language] || (r.language ? 'Altro' : 'IT')) : (L[$('f-lang').value] || 'IT'),
+    variant:{holo:'Holo', reverse:'Reverse holo', normal:'Normale'}[r.variant_hint] || 'Normale', cond:est ? est.code : 'NM'};
+}
+function renderManual(){
+  const box = $('manadd'); if (!box) return;
+  if (!current.searched && !current.rec){ box.innerHTML = ''; return; }
+  if (!manOpen){
+    box.innerHTML = '<div class="manq">' + (current.cands.length
+      ? '<button id="man-open" class="lnk" type="button">Non è nel catalogo? Aggiungi a mano</button>'
+      : '<p class="muted">Se la carta non è in nessun catalogo (per esempio una cinese) puoi aggiungerla lo stesso, con i dati letti e la tua foto.</p><button id="man-open" class="btn" type="button">Aggiungi a mano</button>') + '</div>';
+    return;
+  }
+  const d = manDefaults(), fld = (id, l, v, x) => '<div class="field"><label for="' + id + '">' + l + '</label><input id="' + id + '" autocomplete="off" value="' + esc(v) + '"' + (x || '') + '></div>';
+  box.innerHTML = '<div class="panel" id="man-form"><b>Aggiungi a mano</b><p class="muted">Controlla i dati letti dalla foto. La carta non avrà un prezzo di mercato: puoi scrivere il tuo.</p>' +
+    fld('m-name', 'Nome', d.name, ' placeholder="es. Energia Nutriente"') +
+    fld('m-printed', 'Nome stampato (facoltativo)', d.printed, ' placeholder="come sulla carta"') +
+    fld('m-set', 'Set (sigla o nome)', d.set, ' placeholder="es. CS6bC"') +
+    '<div class="row">' + fld('m-num', 'Numero', d.num, ' placeholder="es. 131"') + fld('m-tot', 'Totale del set', d.tot, ' inputmode="numeric" placeholder="es. 131"') + '</div>' +
+    '<div class="row"><div class="field"><label for="m-lang">Lingua</label><select id="m-lang">' + opts(LANGS, d.lang) + '</select></div>' +
+    '<div class="field"><label for="m-var">Variante</label><select id="m-var">' + opts(VARS, d.variant) + '</select></div></div>' +
+    '<div class="row"><div class="field"><label for="m-cond">Condizione</label><select id="m-cond">' + opts(CONDS, d.cond) + '</select></div>' +
+    '<div class="field"><label for="m-qty">Quantità</label><input id="m-qty" type="number" min="1" value="1" inputmode="numeric"></div></div>' +
+    '<div class="field"><label for="m-pm">Prezzo tuo in € (facoltativo)</label><input id="m-pm" inputmode="decimal" placeholder="es. 0,50"></div>' +
+    '<button id="m-add" class="btn primary big" type="button">Aggiungi al catalogo</button>' +
+    '<button id="m-cancel" class="lnk" type="button">Annulla</button></div>';
+}
+function addManual(){
+  const name = cleanName($('m-name').value);
+  if (!name){ toast('Scrivi il nome della carta'); $('m-name').focus(); return null; }
+  const printed = cleanName($('m-printed').value), set = cleanName($('m-set').value), pmRaw = $('m-pm').value.trim(), pm = parsePrice(pmRaw);
+  if (pmRaw && pm == null){ toast('Prezzo non valido'); return null; }
+  let num = $('m-num').value.trim(), tot = $('m-tot').value.replace(/\D/g, '');
+  if (num.includes('/')){ const q = num.split('/'); num = q[0].trim(); if (!tot) tot = q[1].replace(/\D/g, ''); }
+  const lang = $('m-lang').value, variant = $('m-var').value, cond = $('m-cond').value, qty = Math.max(1, parseInt($('m-qty').value, 10) || 1);
+  const c = {id:'man:' + newPhotoId(), src:'man', name, number:num, rarity:'', set:{name:set, printedTotal:tot}, images:{small:''}, dex:[], cat:'', tt:'', ill:'', types:[]};
+  const est = condEstimate(current.rec), rj = reviewJobId, j = rj && qJobs.find(x => x.id === rj), crop = j ? (j.raw || j.crop) : (scan.cropRaw || scan.crop);
+  const key = addEntryFromCandidate(c, lang, variant, cond, qty, pm, Object.assign({src:'man', name, nameJp:printed && printed !== name ? printed : ''}, est && cond === est.code ? {condEst:1, condNote:est.notes} : {}));
+  if (crop) attachPhoto(key, crop, j ? j.photo : null, j ? j.quad : null);
+  toast('Aggiunta al catalogo');
+  resetScan();
+  if (rj) finishReview(rj);
+  return key;
+}
+$('manadd').addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  if (b.id === 'man-open'){ manOpen = true; current.sel = null; renderCands(); renderAdd(); renderManual(); $('manadd').scrollIntoView({behavior:'smooth', block:'start'}); }
+  else if (b.id === 'm-cancel'){ manOpen = false; renderManual(); }
+  else if (b.id === 'm-add') addManual();
+});
 function renderAdd(){
   const box = $('addpanel');
   if (current.sel == null){ box.innerHTML = ''; return; }
@@ -2818,7 +2885,7 @@ $('btn-flip').addEventListener('click', guard(async () => { if (!scan.photo) ret
 
 function resetScan(){
   current = {rec:null, cands:[], sel:null}; $('btn-edges').hidden = false; $('btn-flip').hidden = false;
-  $('cands').innerHTML = ''; $('addpanel').innerHTML = ''; setStatus('');
+  $('cands').innerHTML = ''; $('addpanel').innerHTML = ''; manOpen = false; $('manadd').innerHTML = ''; setStatus('');
   $('preview').hidden = true; $('cropact').hidden = true;
   closeEditor(); scan.photo = null; scan.quad = null; scan.flip = false; scan.crop = null; scan.cropRaw = null;
   ['f-name','f-num','f-tot'].forEach(i => $(i).value = '');
@@ -3116,6 +3183,7 @@ const LANGN = {IT:'Italiano', EN:'Inglese', JP:'Giapponese', Altro:'Altro'};
 const lbl2 = (t, right) => '<div class="lbl2"><b>' + esc(t.toUpperCase()) + '</b>' + (right ? '<span>' + esc(right) + '</span>' : '') + '</div>';
 function sourceLine(e, info){
   const p = [];
+  if (isManual(e)) p.push('Aggiunta a mano');
   if (e.priceManual != null) p.push('Prezzo mio');
   else if (info) p.push(info.src === 'cm' ? 'Cardmarket' : 'TCGplayer' + (info.approx ? ' circa' : ''));
   p.push(shortVariant(e.variant)); p.push(e.cond);
@@ -3151,13 +3219,16 @@ function renderCard(){
     lbl2('Condizione', condName) + '<div class="cp" role="group" aria-label="Condizione">' + CONDS.map(c => '<button type="button" data-ed="cond" data-v="' + c[0] + '" aria-pressed="' + (e.cond === c[0]) + '" aria-label="' + esc(c[1]) + '">' + c[0] + '</button>').join('') + '</div>' +
     (e.condEst && e.condNote ? '<p class="cd-est">✦ Stimata dalla foto: ' + esc(e.condNote) + '</p>' : '') +
     '<div class="pnl mine"><div class="mr"><span>Quantità</span><span class="qctl"><button class="qb" type="button" data-a="qminus" aria-label="Una in meno"' + (e.qty <= 1 ? ' disabled' : '') + '>−</button><b>' + e.qty + '</b><button class="qb" type="button" data-a="qplus" aria-label="Una in più">+</button></span></div>' +
-      (jpOf(e) ? '<div class="mr"><label for="cd-it">Nome italiano</label><input id="cd-it" class="itn" autocomplete="off" placeholder="' + esc(jpOf(e)) + '" value="' + esc(hasJp(e.name) ? '' : e.name) + '"></div>' : '') +
+      (isManual(e) ? '<div class="mr"><label for="cd-mn">Nome</label><input id="cd-mn" class="itn" autocomplete="off" value="' + esc(e.name) + '"></div>' +
+        '<div class="mr"><label for="cd-ms">Set</label><input id="cd-ms" class="itn" autocomplete="off" placeholder="sigla o nome" value="' + esc(e.setName) + '"></div>' +
+        '<div class="mr"><label for="cd-mnum">Numero</label><input id="cd-mnum" class="itn" autocomplete="off" placeholder="es. 131/131" value="' + esc(e.number + (e.total ? '/' + e.total : '')) + '"></div>'
+      : jpOf(e) ? '<div class="mr"><label for="cd-it">Nome italiano</label><input id="cd-it" class="itn" autocomplete="off" placeholder="' + esc(jpOf(e)) + '" value="' + esc(hasJp(e.name) ? '' : e.name) + '"></div>' : '') +
       '<div class="mr"><label for="cd-pm">Prezzo mio</label><span class="pmw"><input id="cd-pm" inputmode="decimal" autocomplete="off" placeholder="non impostato" value="' + (e.priceManual != null ? e.priceManual.toFixed(2).replace('.', ',') : '') + '">€</span></div>' +
       (info ? '<div class="mr sub"><span>Mercato (Near Mint)</span><span>' + eur(info.v) + (info.approx ? ' circa' : '') + '</span></div>' : '') +
       (e.priceManual == null && e.price != null && e.cond !== 'NM' ? '<div class="mr sub"><span>Con la condizione ' + esc(e.cond) + '</span><span>' + eur(u) + '</span></div>' : '') + '</div>';
   { const hb = cardHistBody(e, 340, 150);
     h += '<div class="pnl hist"><div class="hh"><b>Storico prezzo</b>' + hb.hd + (hb.ok ? '<button class="hx" type="button" data-a="chfull" aria-label="Grafico a tutto schermo">' + ICON_EXPAND + '</button>' : '') + '</div>' + hb.body +
-      '<div class="hf">' + (e.priceT ? '<span class="cap">Aggiornato il ' + fmtDate(e.priceT) + '</span>' : '<span></span>') + '<button class="lnk" type="button" data-a="refresh">Aggiorna il prezzo</button></div></div>'; }
+      '<div class="hf">' + (e.priceT ? '<span class="cap">Aggiornato il ' + fmtDate(e.priceT) + '</span>' : '<span></span>') + (isManual(e) ? '' : '<button class="lnk" type="button" data-a="refresh">Aggiorna il prezzo</button>') + '</div></div>'; }
   { const dex = Array.isArray(e.dex) ? [...new Set(e.dex)].sort((a, b) => a - b) : [];
     h += '<div class="pnl det">' + dex.map(n => '<button class="dr" type="button" data-dex="' + n + '"><img class="spr" src="' + SPRITE(n) + '" alt="" loading="lazy" onerror="this.style.visibility=\'hidden\'"><span>' + esc(dexName(n) || 'Pokémon') + '</span><em>#' + n + '</em><i>›</i></button>').join('') +
       '<button class="dr" type="button" data-a="set"><span>Set</span><em>' + esc(e.setName) + '</em><i>›</i></button>' +
@@ -3446,6 +3517,7 @@ function applyEdit(e, patch){
   save(); return true;
 }
 async function refreshOne(e){
+  if (isManual(e)) return;
   try {
     let c = null;
     if (e.src === 'tcgdex'){ const d = await tdGet(e.srcLang + '/cards/' + encodeURIComponent(e.srcId)); c = d && fromTcgdex(d, e.srcLang); }
@@ -3475,8 +3547,8 @@ $('v-card').addEventListener('click', async ev => {
   else if (a === 'photo') photoMenu(e);
   else if (a === 'set') pushView('setd', {key:groupKey(e)});
   else if (a === 'menu'){
-    const items = [{t:'Aggiorna il prezzo', fn:() => refreshOne(e)}];
-    if (e.priceManual != null) items.push({t:'Torna al prezzo di mercato', fn:() => { e.priceManual = null; save(); renderCard(); }});
+    const items = isManual(e) ? [] : [{t:'Aggiorna il prezzo', fn:() => refreshOne(e)}];
+    if (e.priceManual != null && !isManual(e)) items.push({t:'Torna al prezzo di mercato', fn:() => { e.priceManual = null; save(); renderCard(); }});
     items.push({t:'Elimina carta', danger:true, fn:del});
     actionSheet(null, items);
   }
@@ -3486,6 +3558,15 @@ $('v-card').addEventListener('change', ev => {
   const e = entryByKey(cardKey); if (!e) return;
   const t = ev.target;
   if (t.id === 'cd-note'){ const v = t.value.trim(); if (v !== (e.note || '')){ e.note = v; save(); } }
+  else if (t.id === 'cd-mn' && isManual(e)){
+    const v = cleanName(t.value); if (!v){ toast('Il nome non può essere vuoto'); renderCard(); return; }
+    if (v !== e.name){ e.name = v; save(); toast('Nome salvato'); renderCard(); }
+  }
+  else if (t.id === 'cd-ms' && isManual(e)){ const v = cleanName(t.value); if (v !== e.setName){ e.setName = v; save(); renderCard(); } }
+  else if (t.id === 'cd-mnum' && isManual(e)){
+    const q = t.value.split('/'), n = q[0].trim(), tt = (q[1] || '').replace(/\D/g, '');
+    if (n !== e.number || tt !== e.total){ e.number = n; e.total = tt; save(); renderCard(); }
+  }
   else if (t.id === 'cd-it'){
     // nome italiano di una giapponese: vale per tutte le copie della stessa carta; vuoto = torna il nome giapponese
     const v = cleanName(t.value), jp = jpOf(e); if (!jp) return;
@@ -4079,7 +4160,7 @@ function siglaOf(name){
 }
 const normCat = s => { const t = String(s || '').toLowerCase(); if (!t) return ''; if (/allenator|trainer|dresseur|entrenador|treinador/.test(t)) return 'Trainer'; if (/energ/.test(t)) return 'Energy'; return 'Pokemon'; };
 const ptcgExtra = c => { const cat = normCat(c.supertype); return {...(Array.isArray(c.types) || c.supertype ? {types:normTypes(c.types)} : {}), tcg:mapTcgKeys(c.tcgplayer && c.tcgplayer.prices, r => numPos(r.market) != null ? numPos(r.market) : numPos(r.mid)), dex:c.nationalPokedexNumbers || [], cat, tt:cat === 'Trainer' ? ((c.subtypes && c.subtypes[0]) || '') : '', ill:c.artist || ''}; };
-const pendingDex = () => catalog.filter(e => !Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined).length;
+const pendingDex = () => catalog.filter(e => !isManual(e) && (!Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined)).length;
 const ownedKey = e => e.srcId || e.cardId;
 const ownedDistinct = list => new Set(list.map(ownedKey)).size;
 
@@ -4165,7 +4246,7 @@ function readTypesSoon(){
 // legge dalle carte, una sola volta, Pokémon, categoria, tipo (Erba, Acqua…), tipo di Allenatore e artista
 async function backfillDex(){
   if (dexFill.running) return;
-  const need = catalog.filter(e => !Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined || !Array.isArray(e.types)); if (!need.length) return;
+  const need = catalog.filter(e => !isManual(e) && (!Array.isArray(e.dex) || e.cat === undefined || e.ill === undefined || !Array.isArray(e.types))); if (!need.length) return;
   // carte già collegate al Pokédex: si aggiunge solo il tipo, il resto non si tocca
   const onlyTypes = e => Array.isArray(e.dex) && e.cat !== undefined && e.ill !== undefined;
   dexFill.running = true; dexFill.done = 0; dexFill.total = need.length;
@@ -4739,7 +4820,7 @@ function reviewJob(job){
   const pv = $('preview'), im = new Image();
   im.onload = () => { pv.width = 315; pv.height = 440; pv.getContext('2d').drawImage(im, 0, 0, 315, 440); pv.hidden = false; $('cropact').hidden = false; };
   im.src = job.crop;
-  current = {rec:job.rec, cands:[], sel:null}; $('cands').innerHTML = ''; $('addpanel').innerHTML = ''; setStatus('');
+  current = {rec:job.rec, cands:[], sel:null}; $('cands').innerHTML = ''; $('addpanel').innerHTML = ''; manOpen = false; $('manadd').innerHTML = ''; setStatus('');
   if (job.rec){
     $('f-name').value = job.rec.name_en || job.rec.name_printed || ''; $('f-num').value = job.rec.number || ''; $('f-tot').value = job.rec.printed_total || '';
     $('f-lang').value = ({it:'it', en:'en', ja:'ja'})[job.rec.language] || 'en'; $('manual').open = true; search();
@@ -4850,7 +4931,7 @@ function autoRefreshPrices(){
 async function doRefreshAll(auto){
   const btn = $('btn-refresh'); if (!catalog.length) return;
   await refreshFx();
-  const ptcg = catalog.filter(e => e.src !== 'tcgdex'), td = catalog.filter(e => e.src === 'tcgdex');
+  const ptcg = catalog.filter(e => e.src !== 'tcgdex' && !isManual(e)), td = catalog.filter(e => e.src === 'tcgdex');
   const ids = [...new Set(ptcg.map(e => e.cardId))], tdKeys = [...new Set(td.map(e => e.srcLang + '/' + e.srcId))];
   const totalN = ids.length + tdKeys.length; let done = 0, failed = 0;
   btn.disabled = true;
